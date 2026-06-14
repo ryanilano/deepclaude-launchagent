@@ -2,9 +2,13 @@
 
 Wrapper script and macOS LaunchAgent for running the [DeepClaude](https://github.com/aattaran/deepclaude) proxy with 1Password-managed secrets. Set it and forget it!
 
-DeepClaude is a local proxy that intercepts Claude Code's API calls and routes them to inexpensive but capable backends: DeepSeek, OpenRouter, Fireworks AI, or Anthropic. Use capable models like DeepSeek directly inside Claude Code, VS Code, Cursor, and other coding tools — no extra setup, no new interface. Some features are degraded (image input, MCP tools, prompt caching). Switch backends live via slash commands or curl.
+DeepClaude is a local proxy that intercepts Claude Code's API calls and routes them to inexpensive but capable providers such as DeepSeek and OpenRouter. Use capable open weight models directly inside Claude Code, VS Code, Cursor, and other coding tools. Switch moels and providers live in session via slash commands or curl.
 
-The proxy starts on boot. Authentication comes from 1Password, even faster via biometrics (Touch ID, Face ID, Apple Watch). If it crashes, launchd restarts it. Claude Code, VS Code, Cursor, OpenCode all just work — no setup per session. No exported env vars, no remembering to start anything — the endpoint is just there.
+## How it works
+
+The proxy starts on boot. Authentication comes from 1Password, even faster via biometrics (Touch ID, Face ID, Apple Watch). If it crashes, launchd restarts it.
+
+Claude Code, VS Code, Cursor, OpenCode all just work — no setup per session. No exported env vars, no remembering to start anything — the endpoint is just there.
 
 For full details on DeepClaude itself — supported backends, cost breakdowns, what works and what doesn't — check out the [original DeepClaude repo](https://github.com/aattaran/deepclaude).
 
