@@ -2,9 +2,9 @@
 
 Wrapper script and macOS LaunchAgent for running the [DeepClaude](https://github.com/aattaran/deepclaude) proxy with 1Password-managed secrets. Set it and forget it!
 
-DeepClaude is a local proxy that intercepts Claude Code's API calls and routes them to cheaper or alternative backends: DeepSeek, OpenRouter, Fireworks AI, or Anthropic. It keeps Claude Code's full UX (tool loop, file editing, bash, git, subagents) while swapping which model thinks behind the scenes. Supports live backend switching mid-session via slash commands or curl.
+DeepClaude is a local proxy that intercepts Claude Code's API calls and routes them to cheaper or alternative backends: DeepSeek, OpenRouter, Fireworks AI, or Anthropic. It swaps which model thinks behind the scenes while keeping most of the agent loop intact — file editing, bash, git, subagents all work. Some features are degraded or unsupported (image input, MCP tools, prompt caching). Supports live backend switching mid-session via slash commands or curl.
 
-The proxy is already running when you open your laptop. Keys come from 1Password, not files that get committed to repos. If it crashes, launchd restarts it before you notice. Claude Code, VS Code, Cursor, OpenCode all just work: no setup per session. It's the difference between a service and a script you have to remember to run.
+The proxy is already running when you boot up your machine. Keys come from 1Password — biometric authentication via your fingerprint, Face ID, and Apple Watch really speeds things up. If it crashes, launchd restarts it before you notice. Claude Code, VS Code, Cursor, OpenCode all just work: no setup per session. It's the difference between a service and a script you have to remember to run.
 
 ## Integrations
 
@@ -16,9 +16,9 @@ The proxy is already running when you open your laptop. Keys come from 1Password
 ## Why DeepSeek?
 
 - **19x cheaper:** Running [Artificial Analysis](https://artificialanalysis.ai)'s full Intelligence Index benchmark costs ~`$268` on DeepSeek V4 Pro vs ~`$5,117` on Claude Opus 4.7 ([source](https://apidog.com/blog/deepseek-v4-pro-permanent-price-cut/)); output tokens at `$0.87`/M vs Anthropic's `$15`/M
-- **Comparable quality:** DeepSeek V4 Pro scores [93.5% on LiveCodeBench](https://livecodebench.github.io/leaderboard.html) and [80.6% on SWE-bench Verified](https://benchlm.ai/blog/posts/deepseek-v4-vs-claude-opus-4-7-vs-gpt-5-5); handles ~80% of routine coding tasks at parity with [Claude Opus 4.7](https://benchlm.ai/models/claude-opus-4-7-adaptive)
+- **Comparable quality:** DeepSeek V4 Pro scores [96.4% on LiveCodeBench](https://livecodebench.github.io/leaderboard.html) and [80.6% on SWE-bench Verified](https://benchlm.ai/blog/posts/deepseek-v4-vs-claude-opus-4-7-vs-gpt-5-5); handles ~80% of routine coding tasks at parity with [Claude Opus 4.7](https://benchlm.ai/models/claude-opus-4-7-adaptive)
 - **Auto context caching:** repeat turns cost `$0.004`/M (120x cheaper on agent loops)
-- **Same UX:** file editing, bash, git, subagents all work unchanged; only the model behind the scenes is different
+- **Near-identical UX:** file editing, bash, git, subagents all work unchanged; some features are degraded (no image input, MCP tools, or prompt caching forwarding)
 - **Live switching:** drop to Anthropic for hard problems via `/anthropic`, switch back via `/deepseek`
 
 ## Why this setup?
@@ -66,6 +66,8 @@ echo 'export OP_SERVICE_ACCOUNT_TOKEN="your-token-here"' > ~/.config/deepclaude/
 chmod 700 ~/.config/deepclaude
 chmod 600 ~/.config/deepclaude/secrets.env
 ```
+
+`chmod 600` ensures only your user can read or write the secrets file — other users and group members are locked out. `chmod 700` does the same for the directory itself. Without this, the service account token would be world-readable on a multi-user machine.
 
 **Expected items in the Agentic vault:** _(rename to match your vault)_
 
@@ -121,4 +123,7 @@ tail -f ~/Library/Logs/deepclaude-proxy.err   # stderr
 - Claude Code and other coding tools should point to this endpoint.
 - The wrapper uses `op read` with the **Agentic** vault: your 1Password vault for LLM API keys.
 - `KeepAlive: true` means launchd will restart the proxy if it exits.
-t exits.
+
+## Coming Next
+
+**Full 1Password CLI integration:** The raw `OP_SERVICE_ACCOUNT_TOKEN` in `secrets.env` will be replaced with a `op://` reference, resolved at launch time via `op inject` or `op run`. The token itself will live in 1Password — nothing on disk but a template. Bootstrap still requires a one-time manual unlock (Touch ID or desktop unlock) to seed the reference.
