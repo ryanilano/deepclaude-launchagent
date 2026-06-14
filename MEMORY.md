@@ -1,6 +1,6 @@
 # DeepClaude LaunchAgent
 
-Wrapper script and macOS LaunchAgent for running the DeepClaude proxy with 1Password-managed secrets.
+Wrapper script and macOS LaunchAgent for running the DeepClaude proxy with 1Password-managed secrets. Set it and forget it!
 
 ## How it works
 
@@ -23,20 +23,21 @@ If the proxy crashes, `KeepAlive: true` tells launchd to restart it automaticall
 - **Vault:** "Agentic" — your dedicated vault for LLM API keys
 - **Service account:** needs read access to the Agentic vault
 - **Token:** `OP_SERVICE_ACCOUNT_TOKEN` in `~/.config/deepclaude/secrets.env`
+- `chmod 700 ~/.config/deepclaude && chmod 600 secrets.env`
 
 **Expected items in the Agentic vault:**
 
-| Item name | Field | Required? |
-|-----------|-------|-----------|
-| `DEEPSEEK_API_KEY` | `credential` | Yes |
-| `OPENROUTER_API_KEY` | `credential` | No — verified |
-| `FIREWORKS_API_KEY` | `credential` | No |
-| `ANTHROPIC_API_KEY` | `credential` | No |
+| Item name | Field | Required? | Get a key |
+|-----------|-------|-----------|-----------|
+| `DEEPSEEK_API_KEY` | `credential` | Yes | [platform.deepseek.com](https://platform.deepseek.com) |
+| `OPENROUTER_API_KEY` | `credential` | No — verified | [openrouter.ai/keys](https://openrouter.ai/keys) |
+| `FIREWORKS_API_KEY` | `credential` | No | [fireworks.ai/api-keys](https://fireworks.ai/api-keys) |
+| `ANTHROPIC_API_KEY` | `credential` | No | [console.anthropic.com](https://console.anthropic.com/settings/keys) |
 
 ## Install
 
 ```bash
-bash run-command.txt
+bash install.sh
 ```
 
 ## Test
@@ -58,7 +59,8 @@ tail -f ~/Library/Logs/deepclaude-proxy.err   # stderr
 
 - The proxy listens on `http://127.0.0.1:3200`.
 - Claude Code and other coding tools should point to this endpoint.
-- The wrapper uses `op read` with the **Agentic** vault — your 1Password vault for LLM API keys.
+- The wrapper uses `op read` with the **Agentic** vault, your 1Password vault for LLM API keys.
 - `KeepAlive: true` means launchd will restart the proxy if it exits.
 - `WorkingDirectory` in the plist must point to the proxy source (not this repo).
 - `NODE_BIN` in the wrapper must match your nvm node version.
+- DeepSeek V4 Pro permanent pricing: $0.435/M input, $0.87/M output (75% cut made permanent May 2026).
