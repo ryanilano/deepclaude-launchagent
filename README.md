@@ -2,9 +2,13 @@
 
 Wrapper script and macOS LaunchAgent for running the [DeepClaude](https://github.com/aattaran/deepclaude) proxy with 1Password-managed secrets. Set it and forget it!
 
-DeepClaude is a local proxy that intercepts Claude Code's API calls and routes them to inexpensive but capable backends: DeepSeek, OpenRouter, Fireworks AI, or Anthropic. Use capable models like DeepSeek directly inside Claude Code, VS Code, Cursor, and other coding tools — no extra setup, no new interface. Some features are degraded (image input, MCP tools, prompt caching). Switch backends live via slash commands or curl.
+DeepClaude is a local proxy that intercepts Claude Code's API calls and routes them to inexpensive but capable providers such as DeepSeek and OpenRouter. Use capable open weight models directly inside Claude Code, VS Code, Cursor, and other coding tools. Switch models and providers live in session via slash commands or curl.
 
-The proxy starts on boot. Authentication comes from 1Password, even faster via biometrics (Touch ID, Face ID, Apple Watch). If it crashes, launchd restarts it. Claude Code, VS Code, Cursor, OpenCode all just work — no setup per session. No exported env vars, no remembering to start anything — the endpoint is just there.
+## How it works
+
+The proxy starts on boot. Authentication comes from 1Password, even faster via biometrics (Touch ID, Face ID, Apple Watch). If it crashes, launchd restarts it.
+
+Claude Code, VS Code, Cursor, OpenCode all just work — no setup per session. No exported env vars, no remembering to start anything — the endpoint is just there.
 
 For full details on DeepClaude itself — supported backends, cost breakdowns, what works and what doesn't — check out the [original DeepClaude repo](https://github.com/aattaran/deepclaude).
 
@@ -82,7 +86,15 @@ chmod 600 ~/.config/deepclaude/secrets.env
 
 ## Install
 
-Run from this repo directory:
+First clone the [DeepClaude proxy](https://github.com/aattaran/deepclaude) — this repo is only the launcher, it does not contain the proxy itself:
+
+```bash
+git clone https://github.com/aattaran/deepclaude.git ~/.config/deepclaude/proxy
+```
+
+The proxy is pure Node (ESM, no dependencies) — there is **no `npm install`** step. Its entry point lives in a nested `proxy/` subdirectory: `~/.config/deepclaude/proxy/proxy/start-proxy.js`. That nested path (`~/.config/deepclaude/proxy/proxy`) is what you give the installer as the **proxy source directory**.
+
+Then run the installer from this repo directory:
 
 ```bash
 bash install.sh
@@ -90,10 +102,10 @@ bash install.sh
 
 The script prompts for paths with sensible defaults:
 
-- **Wrapper install path:** where to put the wrapper script (default: `~/bin/`)
-- **Proxy source directory:** where DeepClaude proxy lives (default: `~/code/deepclaude/proxy`)
+- **Wrapper install path:** where to put the wrapper script (default: `~/.config/deepclaude/deepclaude-proxy-wrapper.sh`)
+- **Proxy source directory:** the folder containing `start-proxy.js` — the nested `proxy/` inside the clone, e.g. `~/.config/deepclaude/proxy/proxy`
 - **Log directory:** where to write logs (default: `~/Library/Logs/`)
-- **Node binary:** path to your node executable (default: nvm current version)
+- **Node binary:** path to your node executable (default: whatever `node` is currently on your PATH)
 
 ## Customize before installing
 
@@ -102,7 +114,7 @@ Edit these in `deepclaude-proxy-wrapper.sh`:
 - `NODE_BIN:` your nvm node path (update when you change Node versions)
 - `PROXY_ENTRY:` path to `start-proxy.js` in your proxy checkout
 
-Edit `WorkingDirectory` in `com.deepclaude.proxy.plist` if your proxy source is not at `~/code/deepclaude/proxy`.
+Edit `WorkingDirectory` in `com.deepclaude.proxy.plist` if your proxy source is not at `~/.config/deepclaude/proxy`.
 
 ## Test
 
@@ -125,6 +137,12 @@ tail -f ~/Library/Logs/deepclaude-proxy.err   # stderr
 - Claude Code and other coding tools should point to this endpoint.
 - The wrapper uses `op read` with the **Agentic** vault: your 1Password vault for LLM API keys.
 - `KeepAlive: true` means launchd will restart the proxy if it exits.
+
+## Troubleshooting
+
+**`op` / 1Password dialogs that you can't authorize:** If the 1Password desktop app is installed with CLI integration enabled, `op` will try to route through the desktop app (biometric/disk-access prompts). Under launchd there's no interactive session, so those prompts pile up and can't be dismissed. The wrapper avoids this by invoking `op` in a clean environment (`env -i`) that exposes **only** `OP_SERVICE_ACCOUNT_TOKEN`, forcing fully headless service-account auth — no desktop integration, no dialogs.
+
+**Proxy not responding on `:3200`:** Check `last exit code` with `launchctl print gui/$(id -u)/com.deepclaude.proxy`. A common cause is a `WorkingDirectory` that doesn't exist (launchd fails with `EX_CONFIG (78)` before the wrapper runs and writes no logs) — confirm the proxy source directory exists and contains `start-proxy.js`.
 
 ## Coming Next
 

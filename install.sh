@@ -4,14 +4,25 @@ set -euo pipefail
 # DeepClaude proxy installer — run from the repo directory.
 # Prompts for paths with sensible defaults, then installs the wrapper and LaunchAgent.
 
+# ── Colors ──────────────────────────────────────────────────────────────
+# Disable colors if stdout is not a terminal (e.g. piped to a file).
+if [ -t 1 ]; then
+  BOLD=$'\033[1m'; DIM=$'\033[2m'; RESET=$'\033[0m'
+  GREEN=$'\033[32m'; CYAN=$'\033[36m'; YELLOW=$'\033[33m'
+else
+  BOLD=""; DIM=""; RESET=""; GREEN=""; CYAN=""; YELLOW=""
+fi
+
 # ── Defaults ────────────────────────────────────────────────────────────
 WRAPPER_SRC="$PWD/deepclaude-proxy-wrapper.sh"
 PLIST_SRC="$PWD/com.deepclaude.proxy.plist"
 
-DEFAULT_WRAPPER_DEST="$HOME/bin/deepclaude-proxy-wrapper.sh"
-DEFAULT_PROXY_DIR="$HOME/code/deepclaude/proxy"
+DEFAULT_WRAPPER_DEST="$HOME/.config/deepclaude/deepclaude-proxy-wrapper.sh"
+DEFAULT_PROXY_DIR="$HOME/.config/deepclaude/proxy"
 DEFAULT_LOG_DIR="$HOME/Library/Logs"
-DEFAULT_NODE_BIN="$HOME/.nvm/versions/node/v24.15.0/bin/node"
+# Default to whatever node is currently on PATH (nvm's active version), so this
+# doesn't go stale every Node upgrade. Falls back to a placeholder if none found.
+DEFAULT_NODE_BIN="$(command -v node || echo "$HOME/.nvm/versions/node/<version>/bin/node")"
 
 # ── Interactive prompts ─────────────────────────────────────────────────
 echo "=== DeepClaude proxy installer ==="
@@ -37,7 +48,7 @@ echo "  Logs:       $LOG_DIR"
 echo "  Node:       $NODE_BIN"
 echo ""
 read -rp "Continue? [Y/n] " CONFIRM
-if [[ "${CONFIRM,,}" == "n" ]]; then
+if [[ "$CONFIRM" == [nN]* ]]; then
   echo "Aborted."
   exit 0
 fi
@@ -76,8 +87,8 @@ chmod +x "$WRAPPER_DEST_EXPANDED"
 PLIST_DEST="$HOME/Library/LaunchAgents/com.deepclaude.proxy.plist"
 
 # Template the plist: replace wrapper path, working directory, and log paths.
-sed -e "s|<string>~/bin/deepclaude-proxy-wrapper.sh</string>|<string>$WRAPPER_DEST_EXPANDED</string>|" \
-    -e "s|<string>~/code/deepclaude/proxy</string>|<string>$PROXY_DIR_EXPANDED</string>|" \
+sed -e "s|<string>~/.config/deepclaude/deepclaude-proxy-wrapper.sh</string>|<string>$WRAPPER_DEST_EXPANDED</string>|" \
+    -e "s|<string>~/.config/deepclaude/proxy</string>|<string>$PROXY_DIR_EXPANDED</string>|" \
     -e "s|<string>~/Library/Logs/deepclaude-proxy.log</string>|<string>$LOG_DIR_EXPANDED/deepclaude-proxy.log</string>|" \
     -e "s|<string>~/Library/Logs/deepclaude-proxy.err</string>|<string>$LOG_DIR_EXPANDED/deepclaude-proxy.err</string>|" \
     "$PLIST_SRC" > "$PLIST_DEST"
@@ -94,30 +105,30 @@ launchctl bootstrap gui/$(id -u) "$PLIST_DEST"
 launchctl kickstart -k gui/$(id -u)/com.deepclaude.proxy
 
 echo ""
-echo "Done. DeepClaude proxy installed and running."
-echo "Logs: $LOG_DIR/deepclaude-proxy.{log,err}"
+echo "${GREEN}${BOLD}✓ Done.${RESET} ${BOLD}DeepClaude proxy installed and running.${RESET}"
+echo "${DIM}Logs: $LOG_DIR/deepclaude-proxy.{log,err}${RESET}"
 echo ""
-echo "=== Common usage ==="
+echo "${BOLD}${CYAN}=== Common usage ===${RESET}"
 echo ""
-echo "Check proxy status:"
-echo "  curl -s http://127.0.0.1:3200/_proxy/status"
+echo "${YELLOW}Check proxy status:${RESET}"
+echo "  ${CYAN}curl -s http://127.0.0.1:3200/_proxy/status${RESET}"
 echo ""
-echo "Switch backend:"
-echo "  curl -sX POST http://127.0.0.1:3200/_proxy/mode -d 'backend=deepseek'"
-echo "  curl -sX POST http://127.0.0.1:3200/_proxy/mode -d 'backend=openrouter'"
-echo "  curl -sX POST http://127.0.0.1:3200/_proxy/mode -d 'backend=anthropic'"
+echo "${YELLOW}Switch backend:${RESET}"
+echo "  ${CYAN}curl -sX POST http://127.0.0.1:3200/_proxy/mode -d 'backend=deepseek'${RESET}"
+echo "  ${CYAN}curl -sX POST http://127.0.0.1:3200/_proxy/mode -d 'backend=openrouter'${RESET}"
+echo "  ${CYAN}curl -sX POST http://127.0.0.1:3200/_proxy/mode -d 'backend=anthropic'${RESET}"
 echo ""
-echo "View logs:"
-echo "  tail -f $LOG_DIR/deepclaude-proxy.log"
-echo "  tail -f $LOG_DIR/deepclaude-proxy.err"
+echo "${YELLOW}View logs:${RESET}"
+echo "  ${CYAN}tail -f $LOG_DIR/deepclaude-proxy.log${RESET}"
+echo "  ${CYAN}tail -f $LOG_DIR/deepclaude-proxy.err${RESET}"
 echo ""
-echo "Restart the agent:"
-echo "  launchctl kickstart -k gui/$(id -u)/com.deepclaude.proxy"
+echo "${YELLOW}Restart the agent:${RESET}"
+echo "  ${CYAN}launchctl kickstart -k gui/$(id -u)/com.deepclaude.proxy${RESET}"
 echo ""
-echo "Stop the agent:"
-echo "  launchctl bootout gui/$(id -u)/com.deepclaude.proxy"
+echo "${YELLOW}Stop the agent:${RESET}"
+echo "  ${CYAN}launchctl bootout gui/$(id -u)/com.deepclaude.proxy${RESET}"
 echo ""
-echo "Reload after editing wrapper:"
-echo "  launchctl bootout gui/$(id -u)/com.deepclaude.proxy 2>/dev/null || true"
-echo "  launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.deepclaude.proxy.plist"
-echo "  launchctl kickstart -k gui/$(id -u)/com.deepclaude.proxy"
+echo "${YELLOW}Reload after editing wrapper:${RESET}"
+echo "  ${CYAN}launchctl bootout gui/$(id -u)/com.deepclaude.proxy 2>/dev/null || true${RESET}"
+echo "  ${CYAN}launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.deepclaude.proxy.plist${RESET}"
+echo "  ${CYAN}launchctl kickstart -k gui/$(id -u)/com.deepclaude.proxy${RESET}"

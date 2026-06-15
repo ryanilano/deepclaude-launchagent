@@ -1,7 +1,9 @@
 # Memory
 
 ## Project Overview
-See @README.md for project overview and @package.json for available npm/pnpm commands for this project.
+See @README.md for project overview. This is a shell-based repo (no package manager): the
+wrapper, LaunchAgent plist, and `install.sh` installer. The DeepClaude proxy itself lives in
+a separate clone (default `~/.config/deepclaude/proxy`).
 
 ## Code Style Guidelines
 - Use descriptive variable names
