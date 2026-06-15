@@ -83,6 +83,19 @@ sed -e "s|NODE_BIN=.*|NODE_BIN=\"$NODE_BIN_EXPANDED\"  # set by install.sh|" \
     "$WRAPPER_SRC" > "$WRAPPER_DEST_EXPANDED"
 chmod +x "$WRAPPER_DEST_EXPANDED"
 
+# ── Install + run the key resolver ─────────────────────────────────────
+# The launchd wrapper never runs op (it triggers unauthorizable dialogs in the
+# background). Instead we resolve keys here, in the foreground, where op works
+# cleanly, and cache them to resolved.env for the wrapper to source.
+RESOLVER_DEST="$HOME/.config/deepclaude/resolve-keys.sh"
+if [ -f "$PWD/resolve-keys.sh" ]; then
+  cp -f "$PWD/resolve-keys.sh" "$RESOLVER_DEST"
+  chmod +x "$RESOLVER_DEST"
+  echo ""
+  echo "Resolving 1Password keys (foreground — authorize op now if prompted)..."
+  bash "$RESOLVER_DEST" || echo "Key resolution had issues; proxy will start in passthrough mode."
+fi
+
 # ── Install LaunchAgent plist ──────────────────────────────────────────
 PLIST_DEST="$HOME/Library/LaunchAgents/com.deepclaude.proxy.plist"
 
@@ -92,6 +105,17 @@ sed -e "s|<string>~/.config/deepclaude/deepclaude-proxy-wrapper.sh</string>|<str
     -e "s|<string>~/Library/Logs/deepclaude-proxy.log</string>|<string>$LOG_DIR_EXPANDED/deepclaude-proxy.log</string>|" \
     -e "s|<string>~/Library/Logs/deepclaude-proxy.err</string>|<string>$LOG_DIR_EXPANDED/deepclaude-proxy.err</string>|" \
     "$PLIST_SRC" > "$PLIST_DEST"
+
+# ── Install Claude Code slash commands ─────────────────────────────────
+# Copy /deepseek, /openrouter, /anthropic into the user's global commands dir
+# so they're available in every project. Skipped if the source dir is absent.
+COMMANDS_SRC="$PWD/commands"
+COMMANDS_DEST="$HOME/.claude/commands"
+if [ -d "$COMMANDS_SRC" ]; then
+  mkdir -p "$COMMANDS_DEST"
+  cp -f "$COMMANDS_SRC"/*.md "$COMMANDS_DEST"/
+  echo "Installed slash commands to $COMMANDS_DEST: $(ls "$COMMANDS_SRC" | sed 's/\.md//' | sed 's/^/\//' | tr '\n' ' ')"
+fi
 
 # ── Load the agent ─────────────────────────────────────────────────────
 # Unload any existing agent (ignore errors if not loaded).
