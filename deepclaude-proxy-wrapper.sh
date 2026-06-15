@@ -25,8 +25,21 @@ if [ -z "${OP_SERVICE_ACCOUNT_TOKEN:-}" ]; then
   exit 1
 fi
 
+# ── Headless op invocation ──────────────────────────────────────────────
+# Run op in a clean environment exposing ONLY the service-account token.
+# Without this, op inherits $HOME, discovers the 1Password desktop-app
+# integration (~/.config/op/op-daemon.sock), and tries biometric/desktop
+# auth — which under launchd surfaces dialogs that can't be authorized.
+# Stripping the environment forces pure, headless service-account auth.
+op_read() {
+  env -i \
+    OP_SERVICE_ACCOUNT_TOKEN="$OP_SERVICE_ACCOUNT_TOKEN" \
+    PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin" \
+    op read "$1"
+}
+
 # ── Required key ────────────────────────────────────────────────────────
-DEEPSEEK_API_KEY="$(op read "$DEEPSEEK_REF")"
+DEEPSEEK_API_KEY="$(op_read "$DEEPSEEK_REF")"
 if [ -z "$DEEPSEEK_API_KEY" ]; then
   echo "Failed to read DEEPSEEK_API_KEY from 1Password" >&2
   exit 1
@@ -37,7 +50,7 @@ export DEEPSEEK_API_KEY
 # Each key is fetched once from the "Agentic" vault to avoid redundant API calls.
 read_optional_key() {
   local ref="$1" var="$2" val
-  if val="$(op read "$ref" 2>/dev/null)" && [ -n "$val" ]; then
+  if val="$(op_read "$ref" 2>/dev/null)" && [ -n "$val" ]; then
     export "$var=$val"
     echo "Loaded $var from 1Password"
   else

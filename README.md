@@ -90,10 +90,9 @@ First clone the [DeepClaude proxy](https://github.com/aattaran/deepclaude) — t
 
 ```bash
 git clone https://github.com/aattaran/deepclaude.git ~/.config/deepclaude/proxy
-cd ~/.config/deepclaude/proxy && npm install
 ```
 
-Confirm the proxy entry file exists (`start-proxy.js` by default); if the proxy names it differently, update `PROXY_ENTRY` in the wrapper to match.
+The proxy is pure Node (ESM, no dependencies) — there is **no `npm install`** step. Its entry point lives in a nested `proxy/` subdirectory: `~/.config/deepclaude/proxy/proxy/start-proxy.js`. That nested path (`~/.config/deepclaude/proxy/proxy`) is what you give the installer as the **proxy source directory**.
 
 Then run the installer from this repo directory:
 
@@ -104,7 +103,7 @@ bash install.sh
 The script prompts for paths with sensible defaults:
 
 - **Wrapper install path:** where to put the wrapper script (default: `~/.config/deepclaude/deepclaude-proxy-wrapper.sh`)
-- **Proxy source directory:** where the [DeepClaude proxy](https://github.com/aattaran/deepclaude) is cloned (default: `~/.config/deepclaude/proxy`)
+- **Proxy source directory:** the folder containing `start-proxy.js` — the nested `proxy/` inside the clone, e.g. `~/.config/deepclaude/proxy/proxy`
 - **Log directory:** where to write logs (default: `~/Library/Logs/`)
 - **Node binary:** path to your node executable (default: whatever `node` is currently on your PATH)
 
@@ -138,6 +137,12 @@ tail -f ~/Library/Logs/deepclaude-proxy.err   # stderr
 - Claude Code and other coding tools should point to this endpoint.
 - The wrapper uses `op read` with the **Agentic** vault: your 1Password vault for LLM API keys.
 - `KeepAlive: true` means launchd will restart the proxy if it exits.
+
+## Troubleshooting
+
+**`op` / 1Password dialogs that you can't authorize:** If the 1Password desktop app is installed with CLI integration enabled, `op` will try to route through the desktop app (biometric/disk-access prompts). Under launchd there's no interactive session, so those prompts pile up and can't be dismissed. The wrapper avoids this by invoking `op` in a clean environment (`env -i`) that exposes **only** `OP_SERVICE_ACCOUNT_TOKEN`, forcing fully headless service-account auth — no desktop integration, no dialogs.
+
+**Proxy not responding on `:3200`:** Check `last exit code` with `launchctl print gui/$(id -u)/com.deepclaude.proxy`. A common cause is a `WorkingDirectory` that doesn't exist (launchd fails with `EX_CONFIG (78)` before the wrapper runs and writes no logs) — confirm the proxy source directory exists and contains `start-proxy.js`.
 
 ## Coming Next
 
