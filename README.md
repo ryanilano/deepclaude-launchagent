@@ -120,6 +120,36 @@ The script prompts for paths with sensible defaults:
 - **Log directory:** where to write logs (default: `~/Library/Logs/`)
 - **Node binary:** path to your node executable (default: whatever `node` is currently on your PATH)
 
+## Usage
+
+There are two kinds of command here, typed in two different places:
+
+- **`dc`** — a **shell alias**, typed in your **terminal**. It launches Claude Code pointed at the proxy. (Plain `claude` stays on Anthropic.)
+- **`/deepseek` `/openrouter` `/anthropic`** — **Claude Code slash commands**, typed **inside a Claude Code session**. They tell the proxy which backend to route to.
+
+**1. One-time:** add the alias to your shell (the installer does not do this for you), then reload:
+
+```bash
+echo "alias dc='ANTHROPIC_BASE_URL=http://127.0.0.1:3200 claude'" >> ~/.zshrc
+source ~/.zshrc
+```
+
+**2. Launch Claude Code through the proxy** (in your terminal):
+
+```bash
+dc
+```
+
+**3. Pick a backend** — inside that Claude Code session, type:
+
+```text
+/deepseek      # cheap coding
+/openrouter    # other open models
+/anthropic     # back to the real Claude
+```
+
+That's it. The backend switch is global to the proxy, so it also applies to any other window running `dc`. You can equally switch from a terminal with `curl -sX POST http://127.0.0.1:3200/_proxy/mode -d 'backend=deepseek'` — the slash commands are just shortcuts for that.
+
 ## Customize before installing
 
 Edit these in `deepclaude-proxy-wrapper.sh`:
@@ -147,13 +177,7 @@ curl -s http://127.0.0.1:3200/_proxy/status
 | `/openrouter` | Route through OpenRouter                                          |
 | `/anthropic`  | Passthrough to the real Claude — no vault key required            |
 
-Each is a thin wrapper around the `curl .../_proxy/mode` call, so they switch the **single shared proxy** for every connected session — not per-window. `/deepseek` and `/openrouter` only function if the matching key is present in your vault; `/anthropic` always works.
-
-A `dc` shell alias is the convenient way to launch Claude Code through the proxy while leaving plain `claude` on Anthropic:
-
-```bash
-alias dc='ANTHROPIC_BASE_URL=http://127.0.0.1:3200 claude'
-```
+Each is a thin wrapper around the `curl .../_proxy/mode` call, so they switch the **single shared proxy** for every connected session — not per-window. `/deepseek` and `/openrouter` only function if the matching key is present in your vault; `/anthropic` always works. See [Usage](#usage) for how to launch Claude Code through the proxy with the `dc` alias.
 
 ## Logs
 
