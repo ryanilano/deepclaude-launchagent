@@ -54,11 +54,12 @@ If the proxy crashes, `KeepAlive: true` tells launchd to restart it automaticall
 
 ## Files
 
-| File                          | Purpose                                        |
-| ----------------------------- | ---------------------------------------------- |
-| `deepclaude-proxy-wrapper.sh` | Loads secrets from 1Password, starts the proxy |
-| `com.deepclaude.proxy.plist`  | macOS LaunchAgent definition                   |
-| `install.sh`                  | Interactive installer script                   |
+| File                          | Purpose                                          |
+| ----------------------------- | ------------------------------------------------ |
+| `deepclaude-proxy-wrapper.sh` | Loads secrets from 1Password, starts the proxy   |
+| `com.deepclaude.proxy.plist`  | macOS LaunchAgent definition                     |
+| `install.sh`                  | Interactive installer script                     |
+| `commands/`                   | Claude Code slash commands for switching backend |
 
 ## 1Password Setup
 
@@ -122,6 +123,24 @@ Edit `WorkingDirectory` in `com.deepclaude.proxy.plist` if your proxy source is 
 curl -s http://127.0.0.1:3200/_proxy/status
 curl -sX POST http://127.0.0.1:3200/_proxy/mode -d "backend=deepseek"
 curl -s http://127.0.0.1:3200/_proxy/status
+```
+
+## Switching backends
+
+`install.sh` installs three Claude Code slash commands into `~/.claude/commands/` (available in every project):
+
+| Command       | Effect                                                            |
+| ------------- | ----------------------------------------------------------------- |
+| `/deepseek`   | Route through DeepSeek (cheap)                                    |
+| `/openrouter` | Route through OpenRouter                                          |
+| `/anthropic`  | Passthrough to the real Claude — no vault key required            |
+
+Each is a thin wrapper around the `curl .../_proxy/mode` call, so they switch the **single shared proxy** for every connected session — not per-window. `/deepseek` and `/openrouter` only function if the matching key is present in your vault; `/anthropic` always works.
+
+A `dc` shell alias is the convenient way to launch Claude Code through the proxy while leaving plain `claude` on Anthropic:
+
+```bash
+alias dc='ANTHROPIC_BASE_URL=http://127.0.0.1:3200 claude'
 ```
 
 ## Logs

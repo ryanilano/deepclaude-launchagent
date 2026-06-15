@@ -93,6 +93,17 @@ sed -e "s|<string>~/.config/deepclaude/deepclaude-proxy-wrapper.sh</string>|<str
     -e "s|<string>~/Library/Logs/deepclaude-proxy.err</string>|<string>$LOG_DIR_EXPANDED/deepclaude-proxy.err</string>|" \
     "$PLIST_SRC" > "$PLIST_DEST"
 
+# ── Install Claude Code slash commands ─────────────────────────────────
+# Copy /deepseek, /openrouter, /anthropic into the user's global commands dir
+# so they're available in every project. Skipped if the source dir is absent.
+COMMANDS_SRC="$PWD/commands"
+COMMANDS_DEST="$HOME/.claude/commands"
+if [ -d "$COMMANDS_SRC" ]; then
+  mkdir -p "$COMMANDS_DEST"
+  cp -f "$COMMANDS_SRC"/*.md "$COMMANDS_DEST"/
+  echo "Installed slash commands to $COMMANDS_DEST: $(ls "$COMMANDS_SRC" | sed 's/\.md//' | sed 's/^/\//' | tr '\n' ' ')"
+fi
+
 # ── Load the agent ─────────────────────────────────────────────────────
 # Unload any existing agent (ignore errors if not loaded).
 launchctl bootout gui/$(id -u) "$PLIST_DEST" 2>/dev/null || true
