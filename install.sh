@@ -83,6 +83,19 @@ sed -e "s|NODE_BIN=.*|NODE_BIN=\"$NODE_BIN_EXPANDED\"  # set by install.sh|" \
     "$WRAPPER_SRC" > "$WRAPPER_DEST_EXPANDED"
 chmod +x "$WRAPPER_DEST_EXPANDED"
 
+# ── Install + run the key resolver ─────────────────────────────────────
+# The launchd wrapper never runs op (it triggers unauthorizable dialogs in the
+# background). Instead we resolve keys here, in the foreground, where op works
+# cleanly, and cache them to resolved.env for the wrapper to source.
+RESOLVER_DEST="$HOME/.config/deepclaude/resolve-keys.sh"
+if [ -f "$PWD/resolve-keys.sh" ]; then
+  cp -f "$PWD/resolve-keys.sh" "$RESOLVER_DEST"
+  chmod +x "$RESOLVER_DEST"
+  echo ""
+  echo "Resolving 1Password keys (foreground — authorize op now if prompted)..."
+  bash "$RESOLVER_DEST" || echo "Key resolution had issues; proxy will start in passthrough mode."
+fi
+
 # ── Install LaunchAgent plist ──────────────────────────────────────────
 PLIST_DEST="$HOME/Library/LaunchAgents/com.deepclaude.proxy.plist"
 

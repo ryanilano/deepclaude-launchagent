@@ -4,9 +4,9 @@ Wrapper script and macOS LaunchAgent for running the [DeepClaude](https://github
 
 DeepClaude is a local proxy that intercepts Claude Code's API calls and routes them to inexpensive but capable providers such as DeepSeek and OpenRouter. Use capable open weight models directly inside Claude Code, VS Code, Cursor, and other coding tools. Switch models and providers live in session via slash commands or curl.
 
-## How it works
+## Overview
 
-The proxy starts on boot. Authentication comes from 1Password, even faster via biometrics (Touch ID, Face ID, Apple Watch). If it crashes, launchd restarts it.
+The proxy starts on boot. API keys come from 1Password via a service-account token, resolved once and cached so startup is fully headless. If it crashes, launchd restarts it.
 
 Claude Code, VS Code, Cursor, OpenCode all just work — no setup per session. No exported env vars, no remembering to start anything — the endpoint is just there.
 
@@ -38,11 +38,20 @@ Running DeepClaude on its own works, but you have to start it manually every ses
 
 ## How it works
 
-1. macOS loads the LaunchAgent on login (`RunAtLoad: true`).
-2. The wrapper script reads API keys from the **"Agentic" 1Password vault** (your LLM/AI key vault) using `op read`. You can rename this to whatever vault you use.
-3. Keys are exported as environment variables, then the proxy starts via `exec node`.
+1. `resolve-keys.sh` reads your API keys from the **"Agentic" 1Password vault** (your LLM/AI key vault) using `op` and caches them to `~/.config/deepclaude/resolved.env` (chmod 600). This runs in the **foreground** — at install time and whenever you re-run it — where `op` works cleanly. You can rename the vault to whatever you use.
+2. macOS loads the LaunchAgent on login (`RunAtLoad: true`).
+3. The wrapper sources `resolved.env` and starts the proxy via `exec node`. **It never runs `op`** — see the note below.
 
 If the proxy crashes, `KeepAlive: true` tells launchd to restart it automatically.
+
+### Why keys are resolved ahead of time, not at launch
+
+Running `op` under launchd triggers macOS disk-access / 1Password dialogs that can't be authorized in a background context — they pile up and stall startup. So `op` runs only in the foreground (the resolver), and the launchd wrapper reads a plain cached file. After rotating keys in 1Password, refresh the cache and restart the proxy:
+
+```bash
+bash ~/.config/deepclaude/resolve-keys.sh
+launchctl kickstart -k gui/$(id -u)/com.deepclaude.proxy
+```
 
 ## Prerequisites
 
@@ -50,20 +59,23 @@ If the proxy crashes, `KeepAlive: true` tells launchd to restart it automaticall
 - **[1Password CLI](https://developer.1password.com/docs/cli/)** (`op`) installed via Homebrew: `brew install 1password-cli`
 - **[1Password Service Account](https://developer.1password.com/docs/cli/service-accounts/)** with access to the "Agentic" vault
 - `OP_SERVICE_ACCOUNT_TOKEN` set in `~/.config/deepclaude/secrets.env` (or exported in your shell)
-- **[Node.js](https://nodejs.org)** installed via **[nvm](https://github.com/nvm-sh/nvm)** (path in wrapper script must match your version)
+- **[Node.js](https://nodejs.org)** installed via **[nvm](https://github.com/nvm-sh/nvm)** (the installer defaults to whatever `node` is on your PATH)
+
+All API keys are **optional**. With no keys (or no service-account token) the proxy still starts in Anthropic passthrough mode; each backend lights up only when its key is present.
 
 ## Files
 
-| File                          | Purpose                                          |
-| ----------------------------- | ------------------------------------------------ |
-| `deepclaude-proxy-wrapper.sh` | Loads secrets from 1Password, starts the proxy   |
-| `com.deepclaude.proxy.plist`  | macOS LaunchAgent definition                     |
-| `install.sh`                  | Interactive installer script                     |
-| `commands/`                   | Claude Code slash commands for switching backend |
+| File                          | Purpose                                                    |
+| ----------------------------- | ---------------------------------------------------------- |
+| `resolve-keys.sh`             | Resolves 1Password keys to a cache (run in the foreground) |
+| `deepclaude-proxy-wrapper.sh` | Sources the cached keys and starts the proxy               |
+| `com.deepclaude.proxy.plist`  | macOS LaunchAgent definition                               |
+| `install.sh`                  | Interactive installer script                               |
+| `commands/`                   | Claude Code slash commands for switching backend           |
 
 ## 1Password Setup
 
-The wrapper reads keys from the **"Agentic" vault**, this is my dedicated vault for LLM API keys stored in 1Password. You can name yours whatever you like; just update the vault name in `deepclaude-proxy-wrapper.sh`. [Why use a separate vault?](https://support.1password.com/create-share-vaults/)
+`resolve-keys.sh` reads keys from the **"Agentic" vault**, this is my dedicated vault for LLM API keys stored in 1Password. You can name yours whatever you like; just update the `VAULT` variable in `resolve-keys.sh`. [Why use a separate vault?](https://support.1password.com/create-share-vaults/)
 
 Create a service account at [1Password.com -> Settings -> Service Accounts](https://my.1password.com) and grant it read access to your vault. Then save the token:
 
@@ -154,7 +166,7 @@ tail -f ~/Library/Logs/deepclaude-proxy.err   # stderr
 
 - The proxy listens on `http://127.0.0.1:3200`.
 - Claude Code and other coding tools should point to this endpoint.
-- The wrapper uses `op read` with the **Agentic** vault: your 1Password vault for LLM API keys.
+- `resolve-keys.sh` uses `op` (foreground) to read the **Agentic** vault and cache keys; the wrapper just sources that cache.
 - `KeepAlive: true` means launchd will restart the proxy if it exits.
 
 ## Troubleshooting
