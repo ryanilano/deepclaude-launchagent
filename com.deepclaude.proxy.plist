@@ -4,14 +4,14 @@
 <dict>
   <key>Label</key>
   <string>com.deepclaude.proxy</string>
-  <!-- Paths below are templates — run-command.sh replaces them with your values -->
+  <!-- Paths below are templates — install.sh replaces them with your values -->
   <key>ProgramArguments</key>
   <array>
-    <string>~/bin/deepclaude-proxy-wrapper.sh</string>
+    <string>~/.config/deepclaude/deepclaude-proxy-wrapper.sh</string>
   </array>
   <!-- WorkingDirectory must point to the proxy source directory (not this repo) -->
   <key>WorkingDirectory</key>
-  <string>~/code/deepclaude/proxy</string>
+  <string>~/.config/deepclaude/proxy</string>
   <key>RunAtLoad</key>
   <true/>
   <key>KeepAlive</key>

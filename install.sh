@@ -87,8 +87,8 @@ chmod +x "$WRAPPER_DEST_EXPANDED"
 PLIST_DEST="$HOME/Library/LaunchAgents/com.deepclaude.proxy.plist"
 
 # Template the plist: replace wrapper path, working directory, and log paths.
-sed -e "s|<string>~/bin/deepclaude-proxy-wrapper.sh</string>|<string>$WRAPPER_DEST_EXPANDED</string>|" \
-    -e "s|<string>~/code/deepclaude/proxy</string>|<string>$PROXY_DIR_EXPANDED</string>|" \
+sed -e "s|<string>~/.config/deepclaude/deepclaude-proxy-wrapper.sh</string>|<string>$WRAPPER_DEST_EXPANDED</string>|" \
+    -e "s|<string>~/.config/deepclaude/proxy</string>|<string>$PROXY_DIR_EXPANDED</string>|" \
     -e "s|<string>~/Library/Logs/deepclaude-proxy.log</string>|<string>$LOG_DIR_EXPANDED/deepclaude-proxy.log</string>|" \
     -e "s|<string>~/Library/Logs/deepclaude-proxy.err</string>|<string>$LOG_DIR_EXPANDED/deepclaude-proxy.err</string>|" \
     "$PLIST_SRC" > "$PLIST_DEST"

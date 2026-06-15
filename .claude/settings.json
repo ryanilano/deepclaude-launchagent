@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(~/Library/Logs/**)",
+      "Read(~/Library/LaunchAgents/**)",
+      "Read(~/.config/deepclaude/**)"
+    ]
+  }
+}
