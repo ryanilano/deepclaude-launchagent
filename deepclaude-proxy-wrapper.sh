@@ -6,8 +6,8 @@ set -euo pipefail
 CONFIG_DIR="$HOME/.config/deepclaude"
 SECRETS_ENV="$CONFIG_DIR/secrets.env"
 DEEPSEEK_REF='op://Agentic/DEEPSEEK_API_KEY/credential'  # "Agentic" vault — your LLM API key vault
-NODE_BIN="$HOME/.nvm/versions/node/v24.15.0/bin/node"                    # set by run-command.sh
-PROXY_ENTRY="$HOME/code/deepclaude/proxy/start-proxy.js"
+NODE_BIN="$HOME/.nvm/versions/node/<version>/bin/node"  # set by install.sh
+PROXY_ENTRY="$HOME/.config/deepclaude/proxy/start-proxy.js"  # set by install.sh
 
 # ── PATH ────────────────────────────────────────────────────────────────
 # LaunchAgents inherit a minimal PATH; ensure Homebrew (op) and nvm (node) are reachable.

@@ -86,7 +86,16 @@ chmod 600 ~/.config/deepclaude/secrets.env
 
 ## Install
 
-Run from this repo directory:
+First clone the [DeepClaude proxy](https://github.com/aattaran/deepclaude) — this repo is only the launcher, it does not contain the proxy itself:
+
+```bash
+git clone https://github.com/aattaran/deepclaude.git ~/.config/deepclaude/proxy
+cd ~/.config/deepclaude/proxy && npm install
+```
+
+Confirm the proxy entry file exists (`start-proxy.js` by default); if the proxy names it differently, update `PROXY_ENTRY` in the wrapper to match.
+
+Then run the installer from this repo directory:
 
 ```bash
 bash install.sh
@@ -94,10 +103,10 @@ bash install.sh
 
 The script prompts for paths with sensible defaults:
 
-- **Wrapper install path:** where to put the wrapper script (default: `~/bin/`)
-- **Proxy source directory:** where DeepClaude proxy lives (default: `~/code/deepclaude/proxy`)
+- **Wrapper install path:** where to put the wrapper script (default: `~/.config/deepclaude/deepclaude-proxy-wrapper.sh`)
+- **Proxy source directory:** where the [DeepClaude proxy](https://github.com/aattaran/deepclaude) is cloned (default: `~/.config/deepclaude/proxy`)
 - **Log directory:** where to write logs (default: `~/Library/Logs/`)
-- **Node binary:** path to your node executable (default: nvm current version)
+- **Node binary:** path to your node executable (default: whatever `node` is currently on your PATH)
 
 ## Customize before installing
 
@@ -106,7 +115,7 @@ Edit these in `deepclaude-proxy-wrapper.sh`:
 - `NODE_BIN:` your nvm node path (update when you change Node versions)
 - `PROXY_ENTRY:` path to `start-proxy.js` in your proxy checkout
 
-Edit `WorkingDirectory` in `com.deepclaude.proxy.plist` if your proxy source is not at `~/code/deepclaude/proxy`.
+Edit `WorkingDirectory` in `com.deepclaude.proxy.plist` if your proxy source is not at `~/.config/deepclaude/proxy`.
 
 ## Test
 
