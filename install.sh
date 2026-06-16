@@ -58,6 +58,24 @@ WRAPPER_DEST_EXPANDED="${WRAPPER_DEST/#\~/$HOME}"
 PROXY_DIR_EXPANDED="${PROXY_DIR/#\~/$HOME}"
 LOG_DIR_EXPANDED="${LOG_DIR/#\~/$HOME}"
 NODE_BIN_EXPANDED="${NODE_BIN/#\~/$HOME}"
+
+# ── Locate start-proxy.js ───────────────────────────────────────────────
+# The DeepClaude clone keeps its entry point in a NESTED proxy/ subdir
+# (clone-root/proxy/start-proxy.js). If the user gave the clone root, descend
+# into proxy/ automatically. Fail loudly if no entry point is found — a wrong
+# path here causes a MODULE_NOT_FOUND crash loop under launchd (or EX_CONFIG 78
+# if WorkingDirectory is also missing), with no useful logs.
+if [ -f "$PROXY_DIR_EXPANDED/start-proxy.js" ]; then
+  : # already pointing at the dir containing the entry point
+elif [ -f "$PROXY_DIR_EXPANDED/proxy/start-proxy.js" ]; then
+  echo "Found nested entry point — using $PROXY_DIR_EXPANDED/proxy"
+  PROXY_DIR_EXPANDED="$PROXY_DIR_EXPANDED/proxy"
+else
+  echo "Error: start-proxy.js not found in '$PROXY_DIR_EXPANDED' or its proxy/ subdir." >&2
+  echo "Point the proxy source directory at the folder containing start-proxy.js" >&2
+  echo "(for a fresh clone that's usually <clone>/proxy)." >&2
+  exit 1
+fi
 PROXY_ENTRY="$PROXY_DIR_EXPANDED/start-proxy.js"
 
 # ── Create target directories ──────────────────────────────────────────
@@ -100,8 +118,11 @@ fi
 PLIST_DEST="$HOME/Library/LaunchAgents/com.deepclaude.proxy.plist"
 
 # Template the plist: replace wrapper path, working directory, and log paths.
+# WorkingDirectory is anchored on its <key> (not the literal default path) so a
+# custom proxy dir is substituted correctly — otherwise the un-expanded ~/... is
+# left in place and launchd fails with EX_CONFIG (78) before the wrapper runs.
 sed -e "s|<string>~/.config/deepclaude/deepclaude-proxy-wrapper.sh</string>|<string>$WRAPPER_DEST_EXPANDED</string>|" \
-    -e "s|<string>~/.config/deepclaude/proxy</string>|<string>$PROXY_DIR_EXPANDED</string>|" \
+    -e "/<key>WorkingDirectory</{n;s|<string>.*</string>|<string>$PROXY_DIR_EXPANDED</string>|;}" \
     -e "s|<string>~/Library/Logs/deepclaude-proxy.log</string>|<string>$LOG_DIR_EXPANDED/deepclaude-proxy.log</string>|" \
     -e "s|<string>~/Library/Logs/deepclaude-proxy.err</string>|<string>$LOG_DIR_EXPANDED/deepclaude-proxy.err</string>|" \
     "$PLIST_SRC" > "$PLIST_DEST"
