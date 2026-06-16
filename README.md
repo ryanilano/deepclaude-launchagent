@@ -105,7 +105,7 @@ First clone the [DeepClaude proxy](https://github.com/aattaran/deepclaude) — t
 git clone https://github.com/aattaran/deepclaude.git ~/.config/deepclaude/proxy
 ```
 
-The proxy is pure Node (ESM, no dependencies) — there is **no `npm install`** step. Its entry point lives in a nested `proxy/` subdirectory: `~/.config/deepclaude/proxy/proxy/start-proxy.js`. That nested path (`~/.config/deepclaude/proxy/proxy`) is what you give the installer as the **proxy source directory**.
+The proxy is pure Node (ESM, no dependencies) — there is **no `npm install`** step. Its entry point lives in a nested `proxy/` subdirectory: `~/.config/deepclaude/proxy/proxy/start-proxy.js`. You can give the installer either the clone root (`~/.config/deepclaude/proxy`) or that nested path as the **proxy source directory** — it descends into `proxy/` automatically when it finds `start-proxy.js` there, and aborts if it can't find the entry point at all.
 
 Then run the installer from this repo directory:
 
@@ -116,7 +116,7 @@ bash install.sh
 The script prompts for paths with sensible defaults:
 
 - **Wrapper install path:** where to put the wrapper script (default: `~/.config/deepclaude/deepclaude-proxy-wrapper.sh`)
-- **Proxy source directory:** the folder containing `start-proxy.js` — the nested `proxy/` inside the clone, e.g. `~/.config/deepclaude/proxy/proxy`
+- **Proxy source directory:** the clone root or the folder containing `start-proxy.js` — the installer descends into the nested `proxy/` automatically, e.g. `~/.config/deepclaude/proxy` resolves to `~/.config/deepclaude/proxy/proxy`
 - **Log directory:** where to write logs (default: `~/Library/Logs/`)
 - **Node binary:** path to your node executable (default: whatever `node` is currently on your PATH)
 
