@@ -1,2 +1,5 @@
 # Claude Code local agent/editor state (auto-generated, machine-specific)
 .claude/
+
+# CommandCode local state (auto-generated, machine-specific)
+.commandcode/
