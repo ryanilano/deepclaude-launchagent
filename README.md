@@ -33,12 +33,12 @@ Running DeepClaude on its own works, but you have to start it manually every ses
 
 - **Starts on login:** macOS LaunchAgent boots the proxy automatically; no terminal, no `dc` command, no remembering
 - **Crash recovery:** `KeepAlive: true` means launchd restarts the proxy if it exits; your tools never see a dead endpoint
-- **[Secrets in 1Password](https://developer.1password.com/docs/cli/):** API keys live in the "Agentic" vault, not in `.env` files, shell history, or exported variables; rotate keys in 1Password and the proxy picks them up on next restart
+- **[Secrets in 1Password](https://developer.1password.com/docs/cli/):** API keys live in the "Agentic Vault" vault, not in `.env` files, shell history, or exported variables; rotate keys in 1Password and the proxy picks them up on next restart
 - **Always-on endpoint:** `http://127.0.0.1:3200` is available to Claude Code, VS Code, Cursor, OpenCode, and any other tool without launching anything first
 
 ## How it works
 
-1. `resolve-keys.sh` reads your API keys from the **"Agentic" 1Password vault** (your LLM/AI key vault) using `op` and caches them to `~/.config/deepclaude/resolved.env` (chmod 600). This runs in the **foreground** — at install time and whenever you re-run it — where `op` works cleanly. You can rename the vault to whatever you use.
+1. `resolve-keys.sh` reads your API keys from the **"Agentic Vault" 1Password vault** (your LLM/AI key vault) using `op` and caches them to `~/.config/deepclaude/resolved.env` (chmod 600). This runs in the **foreground** — at install time and whenever you re-run it — where `op` works cleanly. You can rename the vault to whatever you use.
 2. macOS loads the LaunchAgent on login (`RunAtLoad: true`).
 3. The wrapper sources `resolved.env` and starts the proxy via `exec node`. **It never runs `op`** — see the note below.
 
@@ -57,7 +57,7 @@ launchctl kickstart -k gui/$(id -u)/com.deepclaude.proxy
 
 - **[Homebrew](https://brew.sh)**: required for 1Password CLI install
 - **[1Password CLI](https://developer.1password.com/docs/cli/)** (`op`) installed via Homebrew: `brew install 1password-cli`
-- **[1Password Service Account](https://developer.1password.com/docs/cli/service-accounts/)** with access to the "Agentic" vault
+- **[1Password Service Account](https://developer.1password.com/docs/cli/service-accounts/)** with access to the "Agentic Vault" vault
 - `OP_SERVICE_ACCOUNT_TOKEN` set in `~/.config/deepclaude/secrets.env` (or exported in your shell)
 - **[Node.js](https://nodejs.org)** installed via **[nvm](https://github.com/nvm-sh/nvm)** (the installer defaults to whatever `node` is on your PATH)
 
@@ -71,11 +71,12 @@ All API keys are **optional**. With no keys (or no service-account token) the pr
 | `deepclaude-proxy-wrapper.sh` | Sources the cached keys and starts the proxy               |
 | `com.deepclaude.proxy.plist`  | macOS LaunchAgent definition                               |
 | `install.sh`                  | Interactive installer script                               |
+| `uninstall.sh`                | Interactive uninstaller — boots out agent, removes files   |
 | `commands/`                   | Claude Code slash commands for switching backend           |
 
 ## 1Password Setup
 
-`resolve-keys.sh` reads keys from the **"Agentic" vault**, this is my dedicated vault for LLM API keys stored in 1Password. You can name yours whatever you like; just update the `VAULT` variable in `resolve-keys.sh`. [Why use a separate vault?](https://support.1password.com/create-share-vaults/)
+`resolve-keys.sh` reads keys from the **"Agentic Vault"** vault, this is my dedicated vault for LLM API keys stored in 1Password. You can name yours whatever you like; just update the `VAULT` variable in `resolve-keys.sh`. [Why use a separate vault?](https://support.1password.com/create-share-vaults/)
 
 Create a service account at [1Password.com -> Settings -> Service Accounts](https://my.1password.com) and grant it read access to your vault. Then save the token:
 
@@ -88,7 +89,7 @@ chmod 600 ~/.config/deepclaude/secrets.env
 
 `chmod 600` ensures only your user can read or write the secrets file — other users and group members are locked out. `chmod 700` does the same for the directory itself. Without this, the service account token would be world-readable on a multi-user machine.
 
-**Expected items in the Agentic vault:** _(rename to match your vault)_
+**Expected items in the Agentic Vault:** _(rename to match your vault)_
 
 | Item name            | Field        | Required? | Get a key                                                            |
 | -------------------- | ------------ | --------- | -------------------------------------------------------------------- |
@@ -186,11 +187,41 @@ tail -f ~/Library/Logs/deepclaude-proxy.log   # stdout
 tail -f ~/Library/Logs/deepclaude-proxy.err   # stderr
 ```
 
+## Uninstall
+
+Run the uninstaller from this repo directory:
+
+```bash
+bash uninstall.sh
+```
+
+It boots out the LaunchAgent and removes the files `install.sh` placed on disk: the plist, the wrapper, `resolve-keys.sh`, the cached `resolved.env`, and the `/deepseek`, `/openrouter`, `/anthropic` slash commands. It **leaves** your `secrets.env`, the proxy clone, and your logs in place — remove those by hand if you want them gone (the script prints the exact commands).
+
+Prefer to do it manually? The equivalent steps:
+
+```bash
+# Stop and unload the agent
+launchctl bootout gui/$(id -u) ~/Library/LaunchAgents/com.deepclaude.proxy.plist 2>/dev/null || true
+
+# Remove the installed files
+rm -f ~/Library/LaunchAgents/com.deepclaude.proxy.plist
+rm -f ~/.config/deepclaude/deepclaude-proxy-wrapper.sh
+rm -f ~/.config/deepclaude/resolve-keys.sh ~/.config/deepclaude/resolved.env
+rm -f ~/.claude/commands/{deepseek,openrouter,anthropic}.md
+
+# Optional — also remove the credential, the proxy clone, and logs
+rm -f ~/.config/deepclaude/secrets.env
+rm -rf ~/.config/deepclaude/proxy
+rm -f ~/Library/Logs/deepclaude-proxy.log ~/Library/Logs/deepclaude-proxy.err
+```
+
+Don't forget to remove the `dc` alias from your `~/.zshrc` if you added it.
+
 ## Notes
 
 - The proxy listens on `http://127.0.0.1:3200`.
 - Claude Code and other coding tools should point to this endpoint.
-- `resolve-keys.sh` uses `op` (foreground) to read the **Agentic** vault and cache keys; the wrapper just sources that cache.
+- `resolve-keys.sh` uses `op` (foreground) to read the **Agentic Vault** and cache keys; the wrapper just sources that cache.
 - `KeepAlive: true` means launchd will restart the proxy if it exits.
 
 ## Troubleshooting

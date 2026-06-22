@@ -19,10 +19,10 @@ Add important architectural decisions and patterns here.
 **Goal:** Eliminate the raw `OP_SERVICE_ACCOUNT_TOKEN` from `~/.config/deepclaude/secrets.env` by storing it inside 1Password itself and resolving it at launch time.
 
 **Approach — `op inject`:**
-1. Store the service account token as a 1Password item (e.g. `op://Agentic/OP_SERVICE_ACCOUNT_TOKEN/credential`)
+1. Store the service account token as a 1Password item (e.g. `op://Agentic Vault/OP_SERVICE_ACCOUNT_TOKEN/credential`)
 2. Change `secrets.env` to use `op://` references instead of raw values:
    ```
-   export OP_SERVICE_ACCOUNT_TOKEN="op://Agentic/OP_SERVICE_ACCOUNT_TOKEN/credential"
+   export OP_SERVICE_ACCOUNT_TOKEN="op://Agentic Vault/OP_SERVICE_ACCOUNT_TOKEN/credential"
    ```
 3. In `deepclaude-proxy-wrapper.sh`, call `op inject -i secrets.env -o /tmp/deepclaude-env` before sourcing, so the resolved values never touch disk persistently
 4. Requires a bootstrap step: the first time, the user manually authenticates with `op signin` or has 1Password desktop unlocked so `op inject` can resolve the reference
