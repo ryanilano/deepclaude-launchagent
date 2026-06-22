@@ -71,6 +71,28 @@ if [ -d "$COMMANDS_SRC" ]; then
   done
 fi
 
+# ── Unwire GUI routing from ~/.claude/settings.json ─────────────────────
+# Mirror of install.sh: drop the ANTHROPIC_BASE_URL key it added (only if it
+# still points at our proxy), and prune an empty env block. Other settings and
+# a differently-pointed base URL are left untouched.
+PROXY_URL="http://127.0.0.1:3200"
+SETTINGS_JSON="$HOME/.claude/settings.json"
+if [ -f "$SETTINGS_JSON" ] && command -v jq >/dev/null 2>&1 && jq empty "$SETTINGS_JSON" >/dev/null 2>&1; then
+  current_base_url="$(jq -r '.env.ANTHROPIC_BASE_URL // empty' "$SETTINGS_JSON" 2>/dev/null || true)"
+  if [ "$current_base_url" = "$PROXY_URL" ]; then
+    cp -f "$SETTINGS_JSON" "$SETTINGS_JSON.deepclaude.bak"
+    if jq 'del(.env.ANTHROPIC_BASE_URL) | if (.env | length) == 0 then del(.env) else . end' \
+         "$SETTINGS_JSON" > "$SETTINGS_JSON.tmp"; then
+      mv -f "$SETTINGS_JSON.tmp" "$SETTINGS_JSON"
+      echo "Removed ANTHROPIC_BASE_URL from $SETTINGS_JSON (backup: $SETTINGS_JSON.deepclaude.bak)."
+    else
+      rm -f "$SETTINGS_JSON.tmp"
+    fi
+  elif [ -n "$current_base_url" ]; then
+    echo "Left ANTHROPIC_BASE_URL in $SETTINGS_JSON untouched (points at $current_base_url, not our proxy)."
+  fi
+fi
+
 echo ""
 echo "${GREEN}${BOLD}✓ Done.${RESET} ${BOLD}DeepClaude proxy uninstalled.${RESET}"
 echo ""

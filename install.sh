@@ -138,6 +138,56 @@ if [ -d "$COMMANDS_SRC" ]; then
   echo "Installed slash commands to $COMMANDS_DEST: $(ls "$COMMANDS_SRC" | sed 's/\.md//' | sed 's/^/\//' | tr '\n' ' ')"
 fi
 
+# ── Wire GUI routing via ~/.claude/settings.json ───────────────────────
+# A terminal `dc` alias can't reach Claude Code launched from VS Code / Cursor.
+# Setting ANTHROPIC_BASE_URL in settings.json routes EVERY session through the
+# proxy, GUI included. We merge it in (preserving any existing env keys) rather
+# than overwrite. Idempotent, backs up first, and degrades to manual
+# instructions if jq is missing — never hard-fails the install.
+PROXY_URL="http://127.0.0.1:3200"
+SETTINGS_JSON="$HOME/.claude/settings.json"
+
+echo ""
+read -rp "Route GUI (VS Code / Cursor) sessions through the proxy by setting ANTHROPIC_BASE_URL in $SETTINGS_JSON? [Y/n] " WIRE_GUI
+gui_routing_declined() { [[ "$WIRE_GUI" == [nN]* ]]; }
+
+if gui_routing_declined; then
+  echo "Skipped GUI routing. Set ANTHROPIC_BASE_URL=$PROXY_URL in $SETTINGS_JSON yourself to route editor sessions."
+elif ! command -v jq >/dev/null 2>&1; then
+  echo "jq not found — skipping automatic GUI routing."
+  echo "Add this to the \"env\" block of $SETTINGS_JSON by hand:"
+  echo "  \"ANTHROPIC_BASE_URL\": \"$PROXY_URL\""
+else
+  mkdir -p "$(dirname "$SETTINGS_JSON")"
+  [ -f "$SETTINGS_JSON" ] || echo '{}' > "$SETTINGS_JSON"
+
+  current_base_url="$(jq -r '.env.ANTHROPIC_BASE_URL // empty' "$SETTINGS_JSON" 2>/dev/null || true)"
+  already_wired() { [ "$current_base_url" = "$PROXY_URL" ]; }
+
+  if already_wired; then
+    echo "GUI routing already set ($SETTINGS_JSON already points ANTHROPIC_BASE_URL at $PROXY_URL)."
+  elif ! jq empty "$SETTINGS_JSON" >/dev/null 2>&1; then
+    echo "Warning: $SETTINGS_JSON is not valid JSON — leaving it untouched."
+    echo "Add \"ANTHROPIC_BASE_URL\": \"$PROXY_URL\" to its \"env\" block by hand."
+  else
+    SETTINGS_BACKUP="$SETTINGS_JSON.deepclaude.bak"
+    cp -f "$SETTINGS_JSON" "$SETTINGS_BACKUP"
+    # Merge: create env if absent, set the one key, leave everything else alone.
+    if jq --arg url "$PROXY_URL" '.env = (.env // {}) | .env.ANTHROPIC_BASE_URL = $url' \
+         "$SETTINGS_JSON" > "$SETTINGS_JSON.tmp"; then
+      mv -f "$SETTINGS_JSON.tmp" "$SETTINGS_JSON"
+      if [ -n "$current_base_url" ]; then
+        echo "Updated ANTHROPIC_BASE_URL ($current_base_url → $PROXY_URL) in $SETTINGS_JSON (backup: $SETTINGS_BACKUP)."
+      else
+        echo "Wired GUI routing: set ANTHROPIC_BASE_URL=$PROXY_URL in $SETTINGS_JSON (backup: $SETTINGS_BACKUP)."
+      fi
+    else
+      rm -f "$SETTINGS_JSON.tmp"
+      echo "Warning: failed to update $SETTINGS_JSON — leaving it untouched."
+    fi
+  fi
+fi
+
 # ── Load the agent ─────────────────────────────────────────────────────
 # Unload any existing agent (ignore errors if not loaded).
 launchctl bootout gui/$(id -u) "$PLIST_DEST" 2>/dev/null || true

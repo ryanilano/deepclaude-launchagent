@@ -68,7 +68,7 @@ The installer prompts for the wrapper path, proxy source dir, log dir, and node 
 
 ### 1. Point Claude Code at the proxy
 
-Set the base URL in `~/.claude/settings.json` — Claude reads it no matter how it's launched (terminal, **and** the VS Code / Cursor extension):
+The installer offers to do this for you — it merges `ANTHROPIC_BASE_URL` into the `env` block of `~/.claude/settings.json` (backing the file up first, preserving your other settings). Claude reads it no matter how it's launched (terminal, **and** the VS Code / Cursor extension). To set it by hand instead:
 
 ```json
 "env": {
@@ -120,7 +120,7 @@ tail -f ~/Library/Logs/deepclaude-proxy.err   # stderr
 bash uninstall.sh
 ```
 
-Boots out the LaunchAgent and removes the files `install.sh` placed (plist, wrapper, `resolve-keys.sh`, `resolved.env`, slash commands). It **leaves** `secrets.env`, the proxy clone, and your logs — remove those by hand. Also undo whichever client wiring you set up: remove `ANTHROPIC_BASE_URL` from `~/.claude/settings.json` (or drop the `dc` alias from `~/.zshrc`).
+Boots out the LaunchAgent and removes the files `install.sh` placed (plist, wrapper, `resolve-keys.sh`, `resolved.env`, slash commands). If the installer wired GUI routing, it also drops `ANTHROPIC_BASE_URL` back out of `~/.claude/settings.json` (only when it still points at this proxy; a custom value is left alone). It **leaves** `secrets.env`, the proxy clone, and your logs — remove those by hand. If you set up the `dc` alias instead of GUI routing, drop it from `~/.zshrc` yourself.
 
 ## Troubleshooting
 
