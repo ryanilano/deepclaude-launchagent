@@ -18,8 +18,30 @@ RESOLVED_ENV="$CONFIG_DIR/resolved.env"
 VAULT="Agentic Vault"  # 1Password vault holding your LLM API keys — rename to match yours
 
 # Load OP_SERVICE_ACCOUNT_TOKEN (and any other env) from secrets.env if present.
-# shellcheck disable=SC1090
-[ -f "$SECRETS_ENV" ] && source "$SECRETS_ENV"
+# The file is piped through `op inject` so the token may be stored as an op://
+# reference (resolved via 1Password desktop integration) instead of a raw value.
+# A reference-free file passes through untouched and needs no auth, so legacy
+# raw-token secrets.env files keep working. Like every op call in this script,
+# this runs in the FOREGROUND only — never under launchd.
+if [ -f "$SECRETS_ENV" ]; then
+  if command -v op >/dev/null 2>&1; then
+    injected="$(mktemp)"
+    trap 'rm -f "$injected"' EXIT
+    if op inject -f -i "$SECRETS_ENV" -o "$injected" >/dev/null 2>&1; then
+      # shellcheck disable=SC1090
+      source "$injected"
+    else
+      echo "op inject failed (is 1Password desktop unlocked?) — using secrets.env as-is." >&2
+      # shellcheck disable=SC1090
+      source "$SECRETS_ENV"
+    fi
+    rm -f "$injected"
+  else
+    # op not installed — source raw (only works if the token is a literal value).
+    # shellcheck disable=SC1090
+    source "$SECRETS_ENV"
+  fi
+fi
 
 umask 077  # resolved.env contains plaintext keys — owner-only from creation
 

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 @AGENTS.md
 
-Always read [AGENTS.md](AGENTS.md) — it is the source of additional memory: code-style guidelines, architecture notes, and planned enhancements (notably moving the service-account token into 1Password via `op inject`/`op run`). The `@AGENTS.md` import above pulls it into context automatically; consult it before reworking secret handling.
+The `@AGENTS.md` import above pulls in additional memory (code style + how the 1Password token is resolved via `op inject`). Consult it before reworking secret handling.
 
 ## What this repo is
 
@@ -37,9 +37,10 @@ When editing these scripts, preserve this split. Do not add `op` calls to the wr
 
 ## Key resolution flow
 
-1. `secrets.env` (user-created, gitignored) holds `OP_SERVICE_ACCOUNT_TOKEN`.
-2. `resolve-keys.sh` sources it, reads keys from the `VAULT` (default `"Agentic Vault"`, set near the top of the script), writes `resolved.env`.
-3. All keys are **optional**. Whichever resolve enable their backend; with no keys/token the proxy still starts in **Anthropic passthrough** mode. Resolution failures degrade gracefully — never hard-fail the install.
+1. `secrets.env` (user-created, gitignored) holds `OP_SERVICE_ACCOUNT_TOKEN` — either as a raw value or as an `op://` reference.
+2. `resolve-keys.sh` pipes `secrets.env` through `op inject -f` (foreground only) and sources the result, so an `op://Agentic Vault/.../credential` reference is resolved via 1Password desktop integration. A reference-free file passes through untouched with no auth, so raw-token files keep working. If `op` is missing or desktop is locked, it falls back to sourcing the file as-is.
+3. With the token in hand, it reads keys from the `VAULT` (default `"Agentic Vault"`, set near the top of the script) via the headless `env -i` `op read`, and writes `resolved.env`.
+4. All keys are **optional**. Whichever resolve enable their backend; with no keys/token the proxy still starts in **Anthropic passthrough** mode. Resolution failures degrade gracefully — never hard-fail the install.
 
 ## Backend switching
 
@@ -50,7 +51,7 @@ curl -s http://127.0.0.1:3200/_proxy/status
 curl -sX POST http://127.0.0.1:3200/_proxy/mode -d 'backend=deepseek'   # or openrouter | anthropic
 ```
 
-The slash commands in `commands/` (`/deepseek`, `/openrouter`, `/anthropic`) are thin wrappers around that `curl` call, run from inside a Claude Code session. `dc` is a separate shell alias (`ANTHROPIC_BASE_URL=http://127.0.0.1:3200 claude`) the user adds manually — the installer does not create it.
+The slash commands in `commands/` (`/deepseek`, `/openrouter`, `/anthropic`) are thin wrappers around that `curl` call, run from inside a Claude Code session. `dc` is a separate shell alias (`ANTHROPIC_BASE_URL=http://127.0.0.1:3200 claude`) the user adds manually — the installer does not create it. Note the alias is **terminal-only**: launching Claude from the VS Code/Cursor extension bypasses it, so to route GUI sessions through the proxy set `ANTHROPIC_BASE_URL` in `~/.claude/settings.json`'s `env` block instead.
 
 ## Operating the live agent
 
@@ -80,4 +81,3 @@ tail -f ~/Library/Logs/deepclaude-proxy.err   # stderr
 - The proxy clone has a **nested** `proxy/` subdir: the entry point is `~/.config/deepclaude/proxy/proxy/start-proxy.js`. `install.sh` accepts either the clone root or the nested dir and descends into `proxy/` automatically (aborting if `start-proxy.js` is found in neither). A wrong path here is the classic failure: `MODULE_NOT_FOUND` crash loop, or `EX_CONFIG (78)` with no logs if `WorkingDirectory` is also bad.
 - The proxy is pure Node ESM with **no dependencies** — there is no `npm install` for it.
 - Wrapper templating works by `sed` replacing whole lines matching `NODE_BIN=.*` and `PROXY_ENTRY=.*`. Keep those assignments on single lines or the installer's substitution breaks.
-- `AGENTS.md` holds planned-enhancement notes (e.g. moving the service-account token into 1Password via `op inject`/`op run`). Consult it before reworking secret handling.
