@@ -38,7 +38,7 @@ When editing these scripts, preserve this split. Do not add `op` calls to the wr
 ## Key resolution flow
 
 1. `secrets.env` (user-created, gitignored) holds `OP_SERVICE_ACCOUNT_TOKEN`.
-2. `resolve-keys.sh` sources it, reads keys from the `VAULT` (default `"Agentic"`, set near the top of the script), writes `resolved.env`.
+2. `resolve-keys.sh` sources it, reads keys from the `VAULT` (default `"Agentic Vault"`, set near the top of the script), writes `resolved.env`.
 3. All keys are **optional**. Whichever resolve enable their backend; with no keys/token the proxy still starts in **Anthropic passthrough** mode. Resolution failures degrade gracefully — never hard-fail the install.
 
 ## Backend switching

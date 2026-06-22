@@ -15,7 +15,7 @@ set -euo pipefail
 CONFIG_DIR="$HOME/.config/deepclaude"
 SECRETS_ENV="$CONFIG_DIR/secrets.env"
 RESOLVED_ENV="$CONFIG_DIR/resolved.env"
-VAULT="Agentic"  # 1Password vault holding your LLM API keys — rename to match yours
+VAULT="Agentic Vault"  # 1Password vault holding your LLM API keys — rename to match yours
 
 # Load OP_SERVICE_ACCOUNT_TOKEN (and any other env) from secrets.env if present.
 # shellcheck disable=SC1090
