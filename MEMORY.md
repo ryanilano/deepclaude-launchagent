@@ -5,7 +5,7 @@ Wrapper script and macOS LaunchAgent for running the DeepClaude proxy with 1Pass
 ## How it works
 
 1. macOS loads the LaunchAgent on login (`RunAtLoad: true`).
-2. The wrapper script reads API keys from the **"Agentic" 1Password vault** (your LLM/AI key vault) using `op read`.
+2. The wrapper script reads API keys from the **"Agentic Vault" 1Password vault** (your LLM/AI key vault) using `op read`.
 3. Keys are exported as environment variables, then the proxy starts via `exec node`.
 
 If the proxy crashes, `KeepAlive: true` tells launchd to restart it automatically.
@@ -20,12 +20,12 @@ If the proxy crashes, `KeepAlive: true` tells launchd to restart it automaticall
 
 ## 1Password Setup
 
-- **Vault:** "Agentic" — your dedicated vault for LLM API keys
-- **Service account:** needs read access to the Agentic vault
+- **Vault:** "Agentic Vault" — your dedicated vault for LLM API keys
+- **Service account:** needs read access to the Agentic Vault
 - **Token:** `OP_SERVICE_ACCOUNT_TOKEN` in `~/.config/deepclaude/secrets.env`
 - `chmod 700 ~/.config/deepclaude && chmod 600 secrets.env`
 
-**Expected items in the Agentic vault:**
+**Expected items in the Agentic Vault:**
 
 | Item name | Field | Required? | Get a key |
 |-----------|-------|-----------|-----------|
@@ -59,7 +59,7 @@ tail -f ~/Library/Logs/deepclaude-proxy.err   # stderr
 
 - The proxy listens on `http://127.0.0.1:3200`.
 - Claude Code and other coding tools should point to this endpoint.
-- The wrapper uses `op read` with the **Agentic** vault, your 1Password vault for LLM API keys.
+- The wrapper uses `op read` with the **Agentic Vault**, your 1Password vault for LLM API keys.
 - `KeepAlive: true` means launchd will restart the proxy if it exits.
 - `WorkingDirectory` in the plist must point to the proxy source (not this repo).
 - `NODE_BIN` in the wrapper must match your nvm node version.
