@@ -1,41 +1,20 @@
 # Memory
 
 ## Project Overview
-See @README.md for project overview. This is a shell-based repo (no package manager): the
-wrapper, LaunchAgent plist, and `install.sh` installer. The DeepClaude proxy itself lives in
-a separate clone (default `~/.config/deepclaude/proxy`).
 
-## Code Style Guidelines
-- Use descriptive variable names
-- Follow existing patterns in the codebase
-- Extract complex conditions into meaningful boolean variables
+See @README.md. Shell-based repo (no package manager): wrapper, LaunchAgent plist, and `install.sh`. The DeepClaude proxy itself lives in a separate clone (default `~/.config/deepclaude/proxy`).
 
-## Architecture Notes
-Add important architectural decisions and patterns here.
+## Code Style
 
-## Planned Enhancements
+- Descriptive variable names; follow existing patterns.
+- Extract complex conditions into meaningful boolean variables.
 
-### 1Password CLI integration for secrets.env
-**Goal:** Eliminate the raw `OP_SERVICE_ACCOUNT_TOKEN` from `~/.config/deepclaude/secrets.env` by storing it inside 1Password itself and resolving it at launch time.
+## `OP_SERVICE_ACCOUNT_TOKEN` in 1Password (implemented)
 
-**Approach — `op inject`:**
-1. Store the service account token as a 1Password item (e.g. `op://Agentic Vault/OP_SERVICE_ACCOUNT_TOKEN/credential`)
-2. Change `secrets.env` to use `op://` references instead of raw values:
-   ```
-   export OP_SERVICE_ACCOUNT_TOKEN="op://Agentic Vault/OP_SERVICE_ACCOUNT_TOKEN/credential"
-   ```
-3. In `deepclaude-proxy-wrapper.sh`, call `op inject -i secrets.env -o /tmp/deepclaude-env` before sourcing, so the resolved values never touch disk persistently
-4. Requires a bootstrap step: the first time, the user manually authenticates with `op signin` or has 1Password desktop unlocked so `op inject` can resolve the reference
+`secrets.env` no longer needs the raw token on disk. `resolve-keys.sh` pipes the file through `op inject -f` (foreground only) before sourcing it, so the token can be an `op://Agentic Vault/.../credential` reference resolved via 1Password desktop integration.
 
-**Alternative — `op run`:**
-- Use `op run --env-file=secrets.env -- node start-proxy.js` to inject all secrets at process launch
-- Cleaner than `op inject` (no temp file) but couples the wrapper more tightly to `op run`'s behavior
-- Both API keys and the service account token would live in 1Password
+- A **reference-free** `secrets.env` passes through `op inject` untouched with no auth, so legacy raw-token files keep working.
+- If `op` is missing or desktop is locked, it falls back to sourcing the file as-is — degrade gracefully, never hard-fail.
+- Chicken-and-egg caveat: resolving the reference still needs 1Password unlocked the first time (desktop biometric unlock).
 
-**Trade-offs:**
-- `op inject` is simpler to reason about, generates a temp file you can inspect
-- `op run` is more ephemeral (nothing on disk) but harder to debug
-- Either way, the chicken-and-egg problem: you still need *some* way to authenticate with 1Password the first time (desktop unlock via biometrics, or a manually-placed token)
-
-## Common Workflows
-Document frequently used workflows and commands here.
+⚠️ This `op inject` call — like every `op` call in this repo — stays in the foreground resolver. It must never run under launchd (see the `op`/launchd constraint in CLAUDE.md). The launchd wrapper still only sources the cached `resolved.env`.

@@ -1,67 +1,101 @@
 # DeepClaude LaunchAgent
 
-Wrapper script and macOS LaunchAgent for running the [DeepClaude](https://github.com/aattaran/deepclaude) proxy with 1Password-managed secrets. Set it and forget it!
+Wrapper script and macOS LaunchAgent for running the [DeepClaude](https://github.com/aattaran/deepclaude) proxy with 1Password-managed secrets. Set it and forget it.
 
-DeepClaude is a local proxy that intercepts Claude Code's API calls and routes them to inexpensive but capable providers such as DeepSeek and OpenRouter. Use capable open weight models directly inside Claude Code, VS Code, Cursor, and other coding tools. Switch models and providers live in session via slash commands or curl.
-
-## Overview
-
-The proxy starts on boot. API keys come from 1Password via a service-account token, resolved once and cached so startup is fully headless. If it crashes, launchd restarts it.
-
-Claude Code, VS Code, Cursor, OpenCode all just work — no setup per session. No exported env vars, no remembering to start anything — the endpoint is just there.
-
-For full details on DeepClaude itself — supported backends, cost breakdowns, what works and what doesn't — check out the [original DeepClaude repo](https://github.com/aattaran/deepclaude).
-
-## Integrations
-
-- **[Claude Code](https://docs.anthropic.com/en/docs/claude-code):** [CLI](https://docs.anthropic.com/en/docs/claude-code) and [VS Code extension](https://marketplace.visualstudio.com/items?itemName=Anthropic.claude-code); use `/deepseek`, `/openrouter`, `/anthropic` slash commands to switch backends live; add VS Code keyboard shortcuts for one-key switching
-- **[Cline](https://cline.bot):** autonomous coding agent for VS Code/JetBrains; point it at the proxy for DeepSeek-powered agentic editing at a fraction of the cost
-- **[Cursor](https://cursor.sh):** configure a terminal profile pointing to `deepclaude` for AI coding with cheaper models
-- **[OpenCode](https://opencode.ai):** free, open-source Claude Code alternative from SST; point it at the proxy for cheaper models with the same agent loop
-
-## Why DeepSeek?
-
-- **19x cheaper:** Running [Artificial Analysis](https://artificialanalysis.ai)'s full Intelligence Index benchmark costs ~`$268` on DeepSeek V4 Pro vs ~`$5,117` on Claude Opus 4.7 ([source](https://apidog.com/blog/deepseek-v4-pro-permanent-price-cut/)); output tokens at `$0.87`/M vs Anthropic's `$15`/M
-- **Comparable quality:** DeepSeek V4 Pro scores [96.4% on LiveCodeBench](https://livecodebench.github.io/leaderboard.html) and [80.6% on SWE-bench Verified](https://benchlm.ai/blog/posts/deepseek-v4-vs-claude-opus-4-7-vs-gpt-5-5); handles ~80% of routine coding tasks at parity with [Claude Opus 4.7](https://benchlm.ai/models/claude-opus-4-7-adaptive)
-- **Auto context caching:** repeat turns cost `$0.004`/M (120x cheaper on agent loops)
-- **Near-identical UX:** file editing, bash, git, subagents all work unchanged; some features are degraded (no image input, MCP tools, or prompt caching forwarding)
-- **Live switching:** drop to Anthropic for hard problems via `/anthropic`, switch back via `/deepseek`
-
-## Why this setup?
-
-Running DeepClaude on its own works, but you have to start it manually every session, manage API keys in your shell, and restart it if it crashes. This repo adds:
-
-- **Starts on login:** macOS LaunchAgent boots the proxy automatically; no terminal, no `dc` command, no remembering
-- **Crash recovery:** `KeepAlive: true` means launchd restarts the proxy if it exits; your tools never see a dead endpoint
-- **[Secrets in 1Password](https://developer.1password.com/docs/cli/):** API keys live in the "Agentic Vault" vault, not in `.env` files, shell history, or exported variables; rotate keys in 1Password and the proxy picks them up on next restart
-- **Always-on endpoint:** `http://127.0.0.1:3200` is available to Claude Code, VS Code, Cursor, OpenCode, and any other tool without launching anything first
+DeepClaude is a local proxy that intercepts Claude Code's API calls and routes them to cheaper, capable providers (DeepSeek, OpenRouter, Fireworks) or passes through to Anthropic. Works with Claude Code, VS Code, Cursor, OpenCode, and any tool that lets you set an API base URL.
 
 ## How it works
 
-1. `resolve-keys.sh` reads your API keys from the **"Agentic Vault" 1Password vault** (your LLM/AI key vault) using `op` and caches them to `~/.config/deepclaude/resolved.env` (chmod 600). This runs in the **foreground** — at install time and whenever you re-run it — where `op` works cleanly. You can rename the vault to whatever you use.
+The proxy listens on `http://127.0.0.1:3200` and starts on login. There's one global backend, switched live.
+
+1. `resolve-keys.sh` reads your API keys from the **"Agentic Vault"** 1Password vault via `op` and caches them to `~/.config/deepclaude/resolved.env` (chmod 600). It runs in the **foreground** — at install, and whenever you re-run it after rotating keys.
 2. macOS loads the LaunchAgent on login (`RunAtLoad: true`).
-3. The wrapper sources `resolved.env` and starts the proxy via `exec node`. **It never runs `op`** — see the note below.
+3. The wrapper sources `resolved.env` and `exec`s the proxy via node. **It never runs `op`.**
 
-If the proxy crashes, `KeepAlive: true` tells launchd to restart it automatically.
+If the proxy crashes, `KeepAlive: true` tells launchd to restart it.
 
-### Why keys are resolved ahead of time, not at launch
-
-Running `op` under launchd triggers macOS disk-access / 1Password dialogs that can't be authorized in a background context — they pile up and stall startup. So `op` runs only in the foreground (the resolver), and the launchd wrapper reads a plain cached file. After rotating keys in 1Password, refresh the cache and restart the proxy:
-
-```bash
-bash ~/.config/deepclaude/resolve-keys.sh
-launchctl kickstart -k gui/$(id -u)/com.deepclaude.proxy
-```
+**Why keys are resolved ahead of time:** running `op` under launchd triggers macOS disk-access / 1Password dialogs that can't be authorized in a background context — they pile up and stall startup. So `op` runs only in the foreground resolver; the launchd wrapper just reads the cached file.
 
 ## Prerequisites
 
-- **[Homebrew](https://brew.sh)**: required for 1Password CLI install
-- **[1Password CLI](https://developer.1password.com/docs/cli/)** (`op`) installed via Homebrew: `brew install 1password-cli`
-- **[1Password Service Account](https://developer.1password.com/docs/cli/service-accounts/)** with access to the "Agentic Vault" vault
-- `OP_SERVICE_ACCOUNT_TOKEN` set in `~/.config/deepclaude/secrets.env` (or exported in your shell)
-- **[Node.js](https://nodejs.org)** installed via **[nvm](https://github.com/nvm-sh/nvm)** (the installer defaults to whatever `node` is on your PATH)
+- **[Homebrew](https://brew.sh)** and **[1Password CLI](https://developer.1password.com/docs/cli/)**: `brew install 1password-cli`
+- A **[1Password Service Account](https://developer.1password.com/docs/cli/service-accounts/)** with read access to your key vault
+- **[Node.js](https://nodejs.org)** on your PATH (the installer defaults to whatever `node` resolves to)
 
-All API keys are **optional**. With no keys (or no service-account token) the proxy still starts in Anthropic passthrough mode; each backend lights up only when its key is present.
+All API keys are **optional**. With no keys (or no token) the proxy still starts in Anthropic passthrough mode; each backend lights up only when its key is present.
+
+## 1Password setup
+
+`resolve-keys.sh` pipes `secrets.env` through `op inject` before reading it, so the service-account token can live in 1Password itself rather than as plaintext on disk. Recommended setup — store the token as a vault item, then reference it:
+
+```bash
+# 1. Save the token as a 1Password item (one time, needs desktop 1Password unlocked):
+op item create --category "API Credential" --title OP_SERVICE_ACCOUNT_TOKEN \
+  --vault "Agentic Vault" "credential=your-token-here"
+
+# 2. Point secrets.env at it by reference (not the raw value):
+mkdir -p ~/.config/deepclaude && chmod 700 ~/.config/deepclaude
+echo 'export OP_SERVICE_ACCOUNT_TOKEN="op://Agentic Vault/OP_SERVICE_ACCOUNT_TOKEN/credential"' \
+  > ~/.config/deepclaude/secrets.env
+chmod 600 ~/.config/deepclaude/secrets.env
+```
+
+`op inject` resolves the `op://` reference via 1Password desktop integration when you run the resolver in the foreground (the launchd wrapper still never runs `op`). Prefer the old way? A raw `export OP_SERVICE_ACCOUNT_TOKEN="your-token-here"` still works — a reference-free `secrets.env` passes through `op inject` untouched with no prompt.
+
+`resolve-keys.sh` reads keys from the **"Agentic Vault"** vault. Name yours whatever you like — just update the `VAULT` variable in the script. Expected items (each with a `credential` field):
+
+| Item                 | Required? | Get a key                                                            |
+| -------------------- | --------- | -------------------------------------------------------------------- |
+| `DEEPSEEK_API_KEY`   | Yes       | [platform.deepseek.com](https://platform.deepseek.com)               |
+| `OPENROUTER_API_KEY` | No        | [openrouter.ai/keys](https://openrouter.ai/keys)                     |
+| `FIREWORKS_API_KEY`  | No        | [fireworks.ai/api-keys](https://fireworks.ai/api-keys)               |
+| `ANTHROPIC_API_KEY`  | No        | [console.anthropic.com](https://console.anthropic.com/settings/keys) |
+
+## Install
+
+Clone the proxy (this repo is only the launcher), then run the installer:
+
+```bash
+git clone https://github.com/aattaran/deepclaude.git ~/.config/deepclaude/proxy
+bash install.sh
+```
+
+The proxy is pure Node (ESM, no dependencies) — there's **no `npm install`**. Its entry point lives in a nested subdir (`~/.config/deepclaude/proxy/proxy/start-proxy.js`); the installer descends into `proxy/` automatically and aborts if it can't find `start-proxy.js`.
+
+The installer prompts for the wrapper path, proxy source dir, log dir, and node binary — all with sensible defaults.
+
+## Usage
+
+### 1. Point Claude Code at the proxy
+
+Set the base URL in `~/.claude/settings.json` — Claude reads it no matter how it's launched (terminal, **and** the VS Code / Cursor extension):
+
+```json
+"env": {
+  "ANTHROPIC_BASE_URL": "http://127.0.0.1:3200"
+}
+```
+
+This routes every Claude Code session through the proxy. You still reach real Claude anytime via `/anthropic` (passthrough mode), so there's no downside to leaving it on.
+
+> **Prefer a per-invocation opt-in?** Skip the setting and add a terminal alias instead — then plain `claude` stays on Anthropic and `dc` opts in:
+>
+> ```bash
+> echo "alias dc='ANTHROPIC_BASE_URL=http://127.0.0.1:3200 claude'" >> ~/.zshrc && source ~/.zshrc
+> ```
+>
+> Note this is **terminal-only** — a shell alias can't reach Claude launched from a GUI/editor. Use the settings.json approach above if you work in VS Code or Cursor.
+
+### 2. Switch the backend
+
+Inside a session, use the slash commands: `/deepseek` (cheap coding), `/openrouter` (other open models), `/anthropic` (back to real Claude). The switch is global to the proxy, so it applies to every connected session. You can equally switch from a terminal:
+
+```bash
+curl -s  http://127.0.0.1:3200/_proxy/status
+curl -sX POST http://127.0.0.1:3200/_proxy/mode -d 'backend=deepseek'
+```
+
+`/deepseek` and `/openrouter` only work if the matching key is present; `/anthropic` always works.
 
 ## Files
 
@@ -70,115 +104,8 @@ All API keys are **optional**. With no keys (or no service-account token) the pr
 | `resolve-keys.sh`             | Resolves 1Password keys to a cache (run in the foreground) |
 | `deepclaude-proxy-wrapper.sh` | Sources the cached keys and starts the proxy               |
 | `com.deepclaude.proxy.plist`  | macOS LaunchAgent definition                               |
-| `install.sh`                  | Interactive installer script                               |
-| `uninstall.sh`                | Interactive uninstaller — boots out agent, removes files   |
+| `install.sh` / `uninstall.sh` | Interactive installer / uninstaller                        |
 | `commands/`                   | Claude Code slash commands for switching backend           |
-
-## 1Password Setup
-
-`resolve-keys.sh` reads keys from the **"Agentic Vault"** vault, this is my dedicated vault for LLM API keys stored in 1Password. You can name yours whatever you like; just update the `VAULT` variable in `resolve-keys.sh`. [Why use a separate vault?](https://support.1password.com/create-share-vaults/)
-
-Create a service account at [1Password.com -> Settings -> Service Accounts](https://my.1password.com) and grant it read access to your vault. Then save the token:
-
-```bash
-mkdir -p ~/.config/deepclaude
-echo 'export OP_SERVICE_ACCOUNT_TOKEN="your-token-here"' > ~/.config/deepclaude/secrets.env
-chmod 700 ~/.config/deepclaude
-chmod 600 ~/.config/deepclaude/secrets.env
-```
-
-`chmod 600` ensures only your user can read or write the secrets file — other users and group members are locked out. `chmod 700` does the same for the directory itself. Without this, the service account token would be world-readable on a multi-user machine.
-
-**Expected items in the Agentic Vault:** _(rename to match your vault)_
-
-| Item name            | Field        | Required? | Get a key                                                            |
-| -------------------- | ------------ | --------- | -------------------------------------------------------------------- |
-| `DEEPSEEK_API_KEY`   | `credential` | Yes       | [platform.deepseek.com](https://platform.deepseek.com)               |
-| `OPENROUTER_API_KEY` | `credential` | No        | [openrouter.ai/keys](https://openrouter.ai/keys)                     |
-| `FIREWORKS_API_KEY`  | `credential` | No        | [fireworks.ai/api-keys](https://fireworks.ai/api-keys)               |
-| `ANTHROPIC_API_KEY`  | `credential` | No        | [console.anthropic.com](https://console.anthropic.com/settings/keys) |
-
-## Install
-
-First clone the [DeepClaude proxy](https://github.com/aattaran/deepclaude) — this repo is only the launcher, it does not contain the proxy itself:
-
-```bash
-git clone https://github.com/aattaran/deepclaude.git ~/.config/deepclaude/proxy
-```
-
-The proxy is pure Node (ESM, no dependencies) — there is **no `npm install`** step. Its entry point lives in a nested `proxy/` subdirectory: `~/.config/deepclaude/proxy/proxy/start-proxy.js`. You can give the installer either the clone root (`~/.config/deepclaude/proxy`) or that nested path as the **proxy source directory** — it descends into `proxy/` automatically when it finds `start-proxy.js` there, and aborts if it can't find the entry point at all.
-
-Then run the installer from this repo directory:
-
-```bash
-bash install.sh
-```
-
-The script prompts for paths with sensible defaults:
-
-- **Wrapper install path:** where to put the wrapper script (default: `~/.config/deepclaude/deepclaude-proxy-wrapper.sh`)
-- **Proxy source directory:** the clone root or the folder containing `start-proxy.js` — the installer descends into the nested `proxy/` automatically, e.g. `~/.config/deepclaude/proxy` resolves to `~/.config/deepclaude/proxy/proxy`
-- **Log directory:** where to write logs (default: `~/Library/Logs/`)
-- **Node binary:** path to your node executable (default: whatever `node` is currently on your PATH)
-
-## Usage
-
-There are two kinds of command here, typed in two different places:
-
-- **`dc`** — a **shell alias**, typed in your **terminal**. It launches Claude Code pointed at the proxy. (Plain `claude` stays on Anthropic.)
-- **`/deepseek` `/openrouter` `/anthropic`** — **Claude Code slash commands**, typed **inside a Claude Code session**. They tell the proxy which backend to route to.
-
-**1. One-time:** add the alias to your shell (the installer does not do this for you), then reload:
-
-```bash
-echo "alias dc='ANTHROPIC_BASE_URL=http://127.0.0.1:3200 claude'" >> ~/.zshrc
-source ~/.zshrc
-```
-
-**2. Launch Claude Code through the proxy** (in your terminal):
-
-```bash
-dc
-```
-
-**3. Pick a backend** — inside that Claude Code session, type:
-
-```text
-/deepseek      # cheap coding
-/openrouter    # other open models
-/anthropic     # back to the real Claude
-```
-
-That's it. The backend switch is global to the proxy, so it also applies to any other window running `dc`. You can equally switch from a terminal with `curl -sX POST http://127.0.0.1:3200/_proxy/mode -d 'backend=deepseek'` — the slash commands are just shortcuts for that.
-
-## Customize before installing
-
-Edit these in `deepclaude-proxy-wrapper.sh`:
-
-- `NODE_BIN:` your nvm node path (update when you change Node versions)
-- `PROXY_ENTRY:` path to `start-proxy.js` in your proxy checkout
-
-Edit `WorkingDirectory` in `com.deepclaude.proxy.plist` if your proxy source is not at `~/.config/deepclaude/proxy`.
-
-## Test
-
-```bash
-curl -s http://127.0.0.1:3200/_proxy/status
-curl -sX POST http://127.0.0.1:3200/_proxy/mode -d "backend=deepseek"
-curl -s http://127.0.0.1:3200/_proxy/status
-```
-
-## Switching backends
-
-`install.sh` installs three Claude Code slash commands into `~/.claude/commands/` (available in every project):
-
-| Command       | Effect                                                            |
-| ------------- | ----------------------------------------------------------------- |
-| `/deepseek`   | Route through DeepSeek (cheap)                                    |
-| `/openrouter` | Route through OpenRouter                                          |
-| `/anthropic`  | Passthrough to the real Claude — no vault key required            |
-
-Each is a thin wrapper around the `curl .../_proxy/mode` call, so they switch the **single shared proxy** for every connected session — not per-window. `/deepseek` and `/openrouter` only function if the matching key is present in your vault; `/anthropic` always works. See [Usage](#usage) for how to launch Claude Code through the proxy with the `dc` alias.
 
 ## Logs
 
@@ -189,47 +116,13 @@ tail -f ~/Library/Logs/deepclaude-proxy.err   # stderr
 
 ## Uninstall
 
-Run the uninstaller from this repo directory:
-
 ```bash
 bash uninstall.sh
 ```
 
-It boots out the LaunchAgent and removes the files `install.sh` placed on disk: the plist, the wrapper, `resolve-keys.sh`, the cached `resolved.env`, and the `/deepseek`, `/openrouter`, `/anthropic` slash commands. It **leaves** your `secrets.env`, the proxy clone, and your logs in place — remove those by hand if you want them gone (the script prints the exact commands).
-
-Prefer to do it manually? The equivalent steps:
-
-```bash
-# Stop and unload the agent
-launchctl bootout gui/$(id -u) ~/Library/LaunchAgents/com.deepclaude.proxy.plist 2>/dev/null || true
-
-# Remove the installed files
-rm -f ~/Library/LaunchAgents/com.deepclaude.proxy.plist
-rm -f ~/.config/deepclaude/deepclaude-proxy-wrapper.sh
-rm -f ~/.config/deepclaude/resolve-keys.sh ~/.config/deepclaude/resolved.env
-rm -f ~/.claude/commands/{deepseek,openrouter,anthropic}.md
-
-# Optional — also remove the credential, the proxy clone, and logs
-rm -f ~/.config/deepclaude/secrets.env
-rm -rf ~/.config/deepclaude/proxy
-rm -f ~/Library/Logs/deepclaude-proxy.log ~/Library/Logs/deepclaude-proxy.err
-```
-
-Don't forget to remove the `dc` alias from your `~/.zshrc` if you added it.
-
-## Notes
-
-- The proxy listens on `http://127.0.0.1:3200`.
-- Claude Code and other coding tools should point to this endpoint.
-- `resolve-keys.sh` uses `op` (foreground) to read the **Agentic Vault** and cache keys; the wrapper just sources that cache.
-- `KeepAlive: true` means launchd will restart the proxy if it exits.
+Boots out the LaunchAgent and removes the files `install.sh` placed (plist, wrapper, `resolve-keys.sh`, `resolved.env`, slash commands). It **leaves** `secrets.env`, the proxy clone, and your logs — remove those by hand. Also undo whichever client wiring you set up: remove `ANTHROPIC_BASE_URL` from `~/.claude/settings.json` (or drop the `dc` alias from `~/.zshrc`).
 
 ## Troubleshooting
 
-**`op` / 1Password dialogs that you can't authorize:** If the 1Password desktop app is installed with CLI integration enabled, `op` will try to route through the desktop app (biometric/disk-access prompts). Under launchd there's no interactive session, so those prompts pile up and can't be dismissed. The wrapper avoids this by invoking `op` in a clean environment (`env -i`) that exposes **only** `OP_SERVICE_ACCOUNT_TOKEN`, forcing fully headless service-account auth — no desktop integration, no dialogs.
-
-**Proxy not responding on `:3200`:** Check `last exit code` with `launchctl print gui/$(id -u)/com.deepclaude.proxy`. A common cause is a `WorkingDirectory` that doesn't exist (launchd fails with `EX_CONFIG (78)` before the wrapper runs and writes no logs) — confirm the proxy source directory exists and contains `start-proxy.js`.
-
-## Coming Next
-
-**Full 1Password CLI integration:** The raw `OP_SERVICE_ACCOUNT_TOKEN` in `secrets.env` will be replaced with a `op://` reference, resolved at launch time via `op inject` or `op run`. The token itself will live in 1Password — nothing on disk but a template. Bootstrap still requires a one-time manual unlock (Touch ID or desktop unlock) to seed the reference.
+- **`op` / 1Password dialogs you can't authorize:** the resolver invokes `op` in a clean environment (`env -i`) exposing only `OP_SERVICE_ACCOUNT_TOKEN`, forcing headless service-account auth with no desktop integration.
+- **Proxy not responding on `:3200`:** check `launchctl print gui/$(id -u)/com.deepclaude.proxy`. A common cause is a bad `WorkingDirectory` (launchd fails with `EX_CONFIG (78)` before writing logs) — confirm the proxy source dir exists and contains `start-proxy.js`.
