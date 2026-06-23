@@ -3,3 +3,6 @@
 
 # CommandCode local state (auto-generated, machine-specific)
 .commandcode/
+
+# Local notes / drafts (not for publishing)
+.local/
