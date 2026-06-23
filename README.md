@@ -1,27 +1,34 @@
-# DeepClaude LaunchAgent
+# DeepClaude LaunchAgent for macOS
 
-Run Claude Code against cheaper, capable models — and flip back to real Claude anytime.
+Use Claude Code's interface with cheaper, capable models and flip back to real Claude anytime. DeepClaude proxies Claude Code's API calls and routes them to providers like DeepSeek, OpenRouter, or any other Anthropic API endpoint.
 
-DeepClaude proxies Claude Code's API calls and routes them to cheaper providers (DeepSeek, OpenRouter, Fireworks).
+Inside any Claude Code session, switch backends with a slash command — `/deepseek` (cheap coding), `/openrouter` (other open models), or `/anthropic` (back to real Claude).
 
-> **This repo is only the launcher, not the proxy.** It's a wrapper script and macOS LaunchAgent that runs the [DeepClaude](https://github.com/aattaran/deepclaude) proxy (a separate clone) with your secrets managed in 1Password. It solves the setup-and-launch problem: one install wires up the secrets, starts the proxy on login, and keeps it running — so you don't have to.
+> **This repo is the macOS launcher, not the [DeepClaude](https://github.com/aattaran/deepclaude) proxy itself.** It makes running DeepClaude on a Mac painless: a wrapper script and LaunchAgent run the proxy (a separate clone) with your secrets in 1Password. This simplifies everything — no manual steps after initial setup.
 
 Works with Claude Code, VS Code, Cursor, OpenCode, and any tool that lets you set an API base URL.
 
 ## Prerequisites
 
 - **[Homebrew](https://brew.sh)** and **[1Password CLI](https://developer.1password.com/docs/cli/)**: `brew install 1password-cli`
-- A **[1Password Service Account](https://developer.1password.com/docs/cli/service-accounts/)** with read access to your key vault
+- A **[1Password Service Account](https://developer.1password.com/docs/cli/service-accounts/)** with read access to your key vault -- though you can rewire it to work without 1Password
 - **[Node.js](https://nodejs.org)** on your PATH (the installer defaults to whatever `node` resolves to)
 
 All API keys are **optional**. With no keys (or no token) the proxy still starts in Anthropic passthrough mode; each backend lights up only when its key is present.
 
 ## Quickstart
 
-Clone the proxy (this repo is only the launcher), then run the installer:
+Clone both repos — this launcher and the proxy it runs — then run the installer from the launcher directory:
 
 ```bash
+# 1. The launcher (this repo)
+git clone https://github.com/ryanilano/deepclaude-launchagent.git
+cd deepclaude-launchagent
+
+# 2. The proxy it runs (a separate clone)
 git clone https://github.com/aattaran/deepclaude.git ~/.config/deepclaude/proxy
+
+# 3. Install
 bash install.sh
 ```
 
@@ -29,11 +36,7 @@ The installer prompts for the wrapper path, proxy source dir, log dir, and node 
 
 That's enough to get the proxy running in Anthropic passthrough mode. To unlock the cheaper backends, add your API keys — see [1Password setup](#1password-setup).
 
-The proxy is pure Node (ESM, no dependencies) — there's **no `npm install`**. Its entry point lives in a nested subdir (`~/.config/deepclaude/proxy/proxy/start-proxy.js`); the installer descends into `proxy/` automatically and aborts if it can't find `start-proxy.js`.
-
-## Usage
-
-### 1. Point Claude Code at the proxy
+## Point Claude Code at the proxy
 
 The installer offers to do this for you — it merges `ANTHROPIC_BASE_URL` into the `env` block of `~/.claude/settings.json` (backing the file up first, preserving your other settings). Claude reads it no matter how it's launched (terminal, **and** the VS Code / Cursor extension).
 
@@ -55,11 +58,9 @@ This routes every Claude Code session through the proxy. You still reach real Cl
 >
 > Note this is **terminal-only** — a shell alias can't reach Claude launched from a GUI/editor. Use the settings.json approach above if you work in VS Code or Cursor.
 
-### 2. Switch the backend
+## Switch the backend
 
-Inside a session, use the slash commands: `/deepseek` (cheap coding), `/openrouter` (other open models), `/anthropic` (back to real Claude). The switch is global to the proxy, so it applies to every connected session.
-
-You can equally switch from a terminal:
+The `/deepseek`, `/openrouter`, and `/anthropic` slash commands are the quickest way — the switch is global to the proxy, so it applies to every connected session. You can equally switch from a terminal:
 
 ```bash
 curl -s  http://127.0.0.1:3200/_proxy/status
