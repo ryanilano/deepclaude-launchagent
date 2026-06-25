@@ -1,0 +1,11 @@
+# Claude Code local agent/editor state (auto-generated, machine-specific)
+.claude/
+
+# CommandCode local state (auto-generated, machine-specific)
+.commandcode/
+
+# Local notes / drafts (not for publishing)
+.local/
+
+# macOS desktop metadata
+.DS_Store
