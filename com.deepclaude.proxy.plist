@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.deepclaude.proxy</string>
+  <!-- Paths below are templates — install.sh replaces them with your values -->
+  <key>ProgramArguments</key>
+  <array>
+    <string>~/.config/deepclaude/deepclaude-proxy-wrapper.sh</string>
+  </array>
+  <!-- WorkingDirectory must point to the proxy source directory (not this repo) -->
+  <key>WorkingDirectory</key>
+  <string>~/.config/deepclaude/proxy</string>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <!-- Logs persist across reboots (unlike /tmp/) -->
+  <key>StandardOutPath</key>
+  <string>~/Library/Logs/deepclaude-proxy.log</string>
+  <key>StandardErrorPath</key>
+  <string>~/Library/Logs/deepclaude-proxy.err</string>
+</dict>
+</plist>
