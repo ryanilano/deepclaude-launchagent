@@ -101,17 +101,15 @@ sed -e "s|NODE_BIN=.*|NODE_BIN=\"$NODE_BIN_EXPANDED\"  # set by install.sh|" \
     "$WRAPPER_SRC" > "$WRAPPER_DEST_EXPANDED"
 chmod +x "$WRAPPER_DEST_EXPANDED"
 
-# ── Install + run the key resolver ─────────────────────────────────────
+# ── Install the key tool (run by hand) ─────────────────────────────────
 # The launchd wrapper never runs op (it triggers unauthorizable dialogs in the
-# background). Instead we resolve keys here, in the foreground, where op works
-# cleanly, and cache them to resolved.env for the wrapper to source.
-RESOLVER_DEST="$HOME/.config/deepclaude/resolve-keys.sh"
-if [ -f "$PWD/resolve-keys.sh" ]; then
-  cp -f "$PWD/resolve-keys.sh" "$RESOLVER_DEST"
-  chmod +x "$RESOLVER_DEST"
-  echo ""
-  echo "Resolving 1Password keys (foreground — authorize op now if prompted)..."
-  bash "$RESOLVER_DEST" || echo "Key resolution had issues; proxy will start in passthrough mode."
+# background). Keys are resolved by deepclaude-keys.sh, which you run BY HAND in
+# the foreground, where op works cleanly; it caches them to resolved.env for the
+# wrapper to source. We only install it here — you run it yourself afterward.
+KEYS_DEST="$HOME/.config/deepclaude/deepclaude-keys.sh"
+if [ -f "$PWD/deepclaude-keys.sh" ]; then
+  cp -f "$PWD/deepclaude-keys.sh" "$KEYS_DEST"
+  chmod +x "$KEYS_DEST"
 fi
 
 # ── Install LaunchAgent plist ──────────────────────────────────────────
@@ -200,8 +198,13 @@ launchctl bootstrap gui/$(id -u) "$PLIST_DEST"
 launchctl kickstart -k gui/$(id -u)/com.deepclaude.proxy
 
 echo ""
-echo "${GREEN}${BOLD}✓ Done.${RESET} ${BOLD}DeepClaude proxy installed and running.${RESET}"
+echo "${GREEN}${BOLD}✓ Done.${RESET} ${BOLD}DeepClaude proxy installed and running${RESET} ${DIM}(Anthropic passthrough until you resolve keys).${RESET}"
 echo "${DIM}Logs: $LOG_DIR/deepclaude-proxy.{log,err}${RESET}"
+echo ""
+echo "${BOLD}${YELLOW}Next step — resolve your 1Password keys by hand:${RESET}"
+echo "  ${CYAN}bash $KEYS_DEST${RESET}"
+echo "  ${CYAN}launchctl kickstart -k gui/$(id -u)/com.deepclaude.proxy${RESET}"
+echo "${DIM}Run the first line whenever you rotate keys, then restart with the second.${RESET}"
 echo ""
 echo "${BOLD}${CYAN}=== Common usage ===${RESET}"
 echo ""

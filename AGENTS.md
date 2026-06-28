@@ -11,7 +11,7 @@ See @README.md. Shell-based repo (no package manager): wrapper, LaunchAgent plis
 
 ## `OP_SERVICE_ACCOUNT_TOKEN` in 1Password (implemented)
 
-`secrets.env` no longer needs the raw token on disk. `resolve-keys.sh` pipes the file through `op inject -f` (foreground only) before sourcing it, so the token can be an `op://Agentic Vault/.../credential` reference resolved via 1Password desktop integration.
+`secrets.env` no longer needs the raw token on disk. `deepclaude-keys.sh` pipes the file through `op inject -f` (foreground only) before sourcing it, so the token can be an `op://Agentic Vault/.../credential` reference resolved via 1Password desktop integration.
 
 - A **reference-free** `secrets.env` passes through `op inject` untouched with no auth, so legacy raw-token files keep working.
 - If `op` is missing or desktop is locked, it falls back to sourcing the file as-is — degrade gracefully, never hard-fail.

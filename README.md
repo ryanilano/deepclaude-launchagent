@@ -68,7 +68,7 @@ The `/deepseek`, `/openrouter`, and `/anthropic` slash commands are the quickest
 
 ## 1Password setup
 
-`resolve-keys.sh` reads your keys from 1Password and caches them, so nothing but a token reference lives on disk.
+`deepclaude-keys.sh` reads your keys from 1Password and caches them, so nothing but a token reference lives on disk. You **run it by hand** — the installer copies it into place but does not run it.
 
 <details>
 <summary><strong>Store the token in 1Password (recommended)</strong></summary>
@@ -109,11 +109,11 @@ chmod 600 ~/.config/deepclaude/resolved.env
 launchctl kickstart -k gui/$(id -u)/com.deepclaude.proxy
 ```
 
-The wrapper just sources this file, so the keys take effect on restart. The trade-offs: they sit in plaintext on disk, there's no rotation, and **don't run `resolve-keys.sh` afterward: it rewrites `resolved.env` from the vault and will wipe these.**
+The wrapper just sources this file, so the keys take effect on restart. The trade-offs: they sit in plaintext on disk, there's no rotation, and **don't run `deepclaude-keys.sh` afterward: it rewrites `resolved.env` from the vault and will wipe these.**
 
 </details>
 
-`resolve-keys.sh` reads keys from the **"Agentic Vault"** vault. Name yours whatever you like, just update the `VAULT` variable in the script. Expected items (each with a `credential` field):
+`deepclaude-keys.sh` reads keys from the **"Agentic Vault"** by default. Name yours whatever you like — the script **prompts you for the vault name** when you run it (press Enter to accept the default), or pre-set `VAULT` in the environment to skip the prompt. Expected items (each with a `credential` field):
 
 | Item                 | Required? | Get a key                                                            |
 | -------------------- | --------- | -------------------------------------------------------------------- |
@@ -129,7 +129,7 @@ The proxy listens on `http://127.0.0.1:3200`, starts on login, and restarts on c
 <details>
 <summary><strong>The full startup flow</strong></summary>
 
-1. `resolve-keys.sh` reads your API keys from the **"Agentic Vault"** 1Password vault via `op` and caches them to `~/.config/deepclaude/resolved.env` (chmod 600). It runs in the **foreground**: at install, and whenever you re-run it after rotating keys.
+1. `deepclaude-keys.sh` reads your API keys from your 1Password vault (default **"Agentic Vault"**) via `op` and caches them to `~/.config/deepclaude/resolved.env` (chmod 600). You **run it by hand** in the **foreground** — once after install and again after rotating keys — and it **prompts for the vault name** (Enter accepts the default).
 2. macOS loads the LaunchAgent on login (`RunAtLoad: true`).
 3. The wrapper sources `resolved.env` and `exec`s the proxy via node. **It never runs `op`.**
 
@@ -141,7 +141,7 @@ The proxy listens on `http://127.0.0.1:3200`, starts on login, and restarts on c
 
 | File                          | Purpose                                                    |
 | ----------------------------- | ---------------------------------------------------------- |
-| `resolve-keys.sh`             | Resolves 1Password keys to a cache (run in the foreground) |
+| `deepclaude-keys.sh`          | Resolves 1Password keys to a cache (run by hand)           |
 | `deepclaude-proxy-wrapper.sh` | Sources the cached keys and starts the proxy               |
 | `com.deepclaude.proxy.plist`  | macOS LaunchAgent definition                               |
 | `install.sh` / `uninstall.sh` | Interactive installer / uninstaller                        |
@@ -160,7 +160,7 @@ tail -f ~/Library/Logs/deepclaude-proxy.err   # stderr
 bash uninstall.sh
 ```
 
-Boots out the LaunchAgent and removes the files `install.sh` placed (plist, wrapper, `resolve-keys.sh`, `resolved.env`, slash commands), and drops `ANTHROPIC_BASE_URL` back out of `~/.claude/settings.json` if it still points here. It leaves `secrets.env`, the proxy clone, and your logs. Remove those by hand.
+Boots out the LaunchAgent and removes the files `install.sh` placed (plist, wrapper, `deepclaude-keys.sh`, `resolved.env`, slash commands), and drops `ANTHROPIC_BASE_URL` back out of `~/.claude/settings.json` if it still points here. It leaves `secrets.env`, the proxy clone, and your logs. Remove those by hand.
 
 ## Troubleshooting
 

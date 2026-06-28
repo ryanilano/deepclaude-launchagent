@@ -20,7 +20,8 @@ fi
 
 CONFIG_DIR="$HOME/.config/deepclaude"
 PLIST_DEST="$HOME/Library/LaunchAgents/com.deepclaude.proxy.plist"
-RESOLVER_DEST="$CONFIG_DIR/resolve-keys.sh"
+KEYS_DEST="$CONFIG_DIR/deepclaude-keys.sh"
+LEGACY_KEYS_DEST="$CONFIG_DIR/resolve-keys.sh"  # pre-rename installs
 RESOLVED_ENV="$CONFIG_DIR/resolved.env"
 DEFAULT_WRAPPER_DEST="$CONFIG_DIR/deepclaude-proxy-wrapper.sh"
 
@@ -36,7 +37,7 @@ echo ""
 echo "This will:"
 echo "  - Boot out and remove the LaunchAgent ($PLIST_DEST)"
 echo "  - Remove the wrapper ($WRAPPER_DEST_EXPANDED)"
-echo "  - Remove the key resolver and cache (resolve-keys.sh, resolved.env)"
+echo "  - Remove the key tool and cache (deepclaude-keys.sh, resolved.env)"
 echo "  - Remove the installed slash commands from ~/.claude/commands"
 echo ""
 echo "It will NOT touch secrets.env, the proxy clone, or your logs."
@@ -55,7 +56,8 @@ echo "Booted out the LaunchAgent (if it was loaded)."
 # ── Remove installed files ──────────────────────────────────────────────
 rm -f "$PLIST_DEST"           && echo "Removed $PLIST_DEST"
 rm -f "$WRAPPER_DEST_EXPANDED" && echo "Removed $WRAPPER_DEST_EXPANDED"
-rm -f "$RESOLVER_DEST"        && echo "Removed $RESOLVER_DEST"
+rm -f "$KEYS_DEST"            && echo "Removed $KEYS_DEST"
+[ -e "$LEGACY_KEYS_DEST" ] && rm -f "$LEGACY_KEYS_DEST" && echo "Removed $LEGACY_KEYS_DEST (legacy)"
 rm -f "$RESOLVED_ENV"         && echo "Removed $RESOLVED_ENV"
 
 # ── Remove slash commands ───────────────────────────────────────────────

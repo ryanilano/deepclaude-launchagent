@@ -1,21 +1,23 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Resolve 1Password keys into a cached env file — run in the FOREGROUND.
+# Resolve 1Password keys into a cached env file — RUN THIS BY HAND.
 #
-# op works cleanly in your interactive session, but under launchd it triggers
-# macOS disk-access / 1Password dialogs that can't be authorized in the
-# background. So we resolve keys here (foreground) and cache them; the launchd
-# wrapper only sources the cache and never runs op.
+# This is the manual key tool: run it in the foreground at install time and
+# again whenever you rotate keys in 1Password. op works cleanly in your
+# interactive session, but under launchd it triggers macOS disk-access /
+# 1Password dialogs that can't be authorized in the background. So we resolve
+# keys here (foreground, by hand) and cache them; the launchd wrapper only
+# sources the cache and never runs op.
 #
-# Re-run this whenever you rotate keys in 1Password, then restart the proxy:
-#   bash ~/.config/deepclaude/resolve-keys.sh
+# Run this whenever you rotate keys in 1Password, then restart the proxy:
+#   bash ~/.config/deepclaude/deepclaude-keys.sh
 #   launchctl kickstart -k gui/$(id -u)/com.deepclaude.proxy
 
 CONFIG_DIR="$HOME/.config/deepclaude"
 SECRETS_ENV="$CONFIG_DIR/secrets.env"
 RESOLVED_ENV="$CONFIG_DIR/resolved.env"
-VAULT="Agentic Vault"  # 1Password vault holding your LLM API keys — rename to match yours
+DEFAULT_VAULT="Agentic Vault"  # 1Password vault holding your LLM API keys
 
 # Load OP_SERVICE_ACCOUNT_TOKEN (and any other env) from secrets.env if present.
 # The file is piped through `op inject` so the token may be stored as an op://
@@ -50,6 +52,18 @@ if [ -z "${OP_SERVICE_ACCOUNT_TOKEN:-}" ]; then
   : > "$RESOLVED_ENV"
   chmod 600 "$RESOLVED_ENV"
   exit 0
+fi
+
+# Ask which 1Password vault to read from — press Enter to accept the default.
+# Pre-set VAULT in the environment (or secrets.env) to skip the prompt entirely.
+if [ -n "${VAULT:-}" ]; then
+  echo "Using vault \"$VAULT\" (from environment)."
+elif [ -t 0 ]; then
+  read -r -p "1Password vault holding your LLM API keys [$DEFAULT_VAULT]: " VAULT
+  VAULT="${VAULT:-$DEFAULT_VAULT}"
+else
+  VAULT="$DEFAULT_VAULT"
+  echo "Non-interactive — using default vault \"$VAULT\"."
 fi
 
 # Run op headlessly with ONLY the service-account token (no desktop integration).

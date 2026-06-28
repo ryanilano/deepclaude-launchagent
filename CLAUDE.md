@@ -19,7 +19,7 @@ Edits in this repo do **not** take effect until reinstalled. `install.sh` *templ
 | Repo source                     | Live destination (after install)                         |
 | ------------------------------- | -------------------------------------------------------- |
 | `deepclaude-proxy-wrapper.sh`   | `~/.config/deepclaude/deepclaude-proxy-wrapper.sh`       |
-| `resolve-keys.sh`               | `~/.config/deepclaude/resolve-keys.sh`                   |
+| `deepclaude-keys.sh`            | `~/.config/deepclaude/deepclaude-keys.sh`                |
 | `com.deepclaude.proxy.plist`    | `~/Library/LaunchAgents/com.deepclaude.proxy.plist`      |
 | `commands/*.md`                 | `~/.claude/commands/*.md` (global slash commands)        |
 
@@ -29,7 +29,7 @@ So after changing the wrapper or plist in this repo, re-run `bash install.sh` (o
 
 `op` (1Password CLI) **must never run under launchd.** In a background context it triggers macOS disk-access / 1Password desktop dialogs that can't be authorized, so they pile up and stall startup. The whole architecture is built around this:
 
-- **`resolve-keys.sh` runs in the foreground only** (at install, or manually after rotating keys). It calls `op read` to pull keys from the 1Password vault and caches them to `~/.config/deepclaude/resolved.env` (chmod 600).
+- **`deepclaude-keys.sh` is run by hand, in the foreground only** (once after install, and again after rotating keys). `install.sh` only copies it into place — it does not run it. It calls `op read` to pull keys from the 1Password vault and caches them to `~/.config/deepclaude/resolved.env` (chmod 600).
 - It invokes `op` via `env -i` exposing **only** `OP_SERVICE_ACCOUNT_TOKEN` — this forces headless service-account auth and bypasses 1Password desktop integration entirely.
 - **`deepclaude-proxy-wrapper.sh` (run by launchd) never runs `op`** — it just `source`s the cached `resolved.env` and `exec`s node.
 
@@ -38,8 +38,8 @@ When editing these scripts, preserve this split. Do not add `op` calls to the wr
 ## Key resolution flow
 
 1. `secrets.env` (user-created, gitignored) holds `OP_SERVICE_ACCOUNT_TOKEN` — either as a raw value or as an `op://` reference.
-2. `resolve-keys.sh` pipes `secrets.env` through `op inject -f` (foreground only) and sources the result, so an `op://Agentic Vault/.../credential` reference is resolved via 1Password desktop integration. A reference-free file passes through untouched with no auth, so raw-token files keep working. If `op` is missing or desktop is locked, it falls back to sourcing the file as-is.
-3. With the token in hand, it reads keys from the `VAULT` (default `"Agentic Vault"`, set near the top of the script) via the headless `env -i` `op read`, and writes `resolved.env`.
+2. `deepclaude-keys.sh` pipes `secrets.env` through `op inject -f` (foreground only) and sources the result, so an `op://Agentic Vault/.../credential` reference is resolved via 1Password desktop integration. A reference-free file passes through untouched with no auth, so raw-token files keep working. If `op` is missing or desktop is locked, it falls back to sourcing the file as-is.
+3. With the token in hand, it **interactively prompts** for the vault to read from (default `"Agentic Vault"`, set via `DEFAULT_VAULT` near the top; press Enter to accept, or pre-set `VAULT` in the environment to skip the prompt), reads keys via the headless `env -i` `op read`, and writes `resolved.env`.
 4. All keys are **optional**. Whichever resolve enable their backend; with no keys/token the proxy still starts in **Anthropic passthrough** mode. Resolution failures degrade gracefully — never hard-fail the install.
 
 ## Backend switching
@@ -59,8 +59,8 @@ The slash commands in `commands/` (`/deepseek`, `/openrouter`, `/anthropic`) are
 # Reinstall everything (re-templates sources into live destinations)
 bash install.sh
 
-# After rotating keys in 1Password: refresh cache, then restart
-bash ~/.config/deepclaude/resolve-keys.sh
+# After rotating keys in 1Password: refresh cache (by hand), then restart
+bash ~/.config/deepclaude/deepclaude-keys.sh
 launchctl kickstart -k gui/$(id -u)/com.deepclaude.proxy
 
 # Reload after editing the wrapper/plist
