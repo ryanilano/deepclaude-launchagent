@@ -12,7 +12,7 @@ PROXY_ENTRY="$HOME/.config/deepclaude/proxy/start-proxy.js"  # set by install.sh
 export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
 
 # ── Load pre-resolved backend keys ──────────────────────────────────────
-# Keys are resolved from 1Password in the FOREGROUND by resolve-keys.sh and
+# Keys are resolved from 1Password in the FOREGROUND by deepclaude-keys.sh and
 # cached to resolved.env. This wrapper never runs op: under launchd op triggers
 # macOS disk-access / 1Password dialogs that can't be authorized in the
 # background. Reading a plain cache file avoids that entirely.
@@ -23,7 +23,7 @@ if [ -f "$RESOLVED_ENV" ]; then
   # shellcheck disable=SC1090
   source "$RESOLVED_ENV"
 else
-  echo "No $RESOLVED_ENV — run resolve-keys.sh. Starting in Anthropic passthrough only." >&2
+  echo "No $RESOLVED_ENV — run deepclaude-keys.sh by hand. Starting in Anthropic passthrough only." >&2
 fi
 
 exec "$NODE_BIN" "$PROXY_ENTRY"
