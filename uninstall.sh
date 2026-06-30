@@ -59,6 +59,7 @@ rm -f "$WRAPPER_DEST_EXPANDED" && echo "Removed $WRAPPER_DEST_EXPANDED"
 rm -f "$KEYS_DEST"            && echo "Removed $KEYS_DEST"
 [ -e "$LEGACY_KEYS_DEST" ] && rm -f "$LEGACY_KEYS_DEST" && echo "Removed $LEGACY_KEYS_DEST (legacy)"
 rm -f "$RESOLVED_ENV"         && echo "Removed $RESOLVED_ENV"
+rm -f "$CONFIG_DIR/check-remap.sh" && echo "Removed $CONFIG_DIR/check-remap.sh"
 
 # ── Remove slash commands ───────────────────────────────────────────────
 # Only remove the commands this repo installs — derived from commands/*.md

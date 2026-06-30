@@ -146,6 +146,7 @@ The proxy listens on `http://127.0.0.1:3200`, starts on login, and restarts on c
 | `com.deepclaude.proxy.plist`  | macOS LaunchAgent definition                               |
 | `install.sh` / `uninstall.sh` | Interactive installer / uninstaller                        |
 | `commands/`                   | Claude Code slash commands for switching backend           |
+| `check-remap.sh`              | Warns at switch time if the proxy can't remap your model   |
 
 ## Logs
 
@@ -166,3 +167,4 @@ Boots out the LaunchAgent and removes the files `install.sh` placed (plist, wrap
 
 - **`op` / 1Password dialogs you can't authorize:** the resolver invokes `op` in a clean environment (`env -i`) exposing only `OP_SERVICE_ACCOUNT_TOKEN`, forcing headless service-account auth with no desktop integration.
 - **Proxy not responding on `:3200`:** check `launchctl print gui/$(id -u)/com.deepclaude.proxy`. A common cause is a bad `WorkingDirectory` (launchd fails with `EX_CONFIG (78)` before writing logs). Confirm the proxy source dir exists and contains `start-proxy.js`.
+- **`⚠️  DeepClaude remap gap` warning after switching backend:** the cloned proxy's `MODEL_REMAP` table (`proxy/model-proxy.js`) has no entry for the Claude model id you're running, so it forwards the raw `claude-*` id to the backend, which then serves its **default** model instead of the one you pinned — silently, with correct-looking 200s. The table is a hardcoded allowlist that goes stale on each Claude release. Fix: add the id to `MODEL_REMAP.<mode>` in the clone, or re-run `check-remap.sh <mode>` to see exactly which ids are missing. Upstream bug: [aattaran/deepclaude#39](https://github.com/aattaran/deepclaude/issues/39). The `/deepseek` and `/openrouter` slash commands run this check automatically after switching.
