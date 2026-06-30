@@ -127,6 +127,17 @@ sed -e "s|<string>~/.config/deepclaude/deepclaude-proxy-wrapper.sh</string>|<str
     -e "s|<string>~/Library/Logs/deepclaude-proxy.err</string>|<string>$LOG_DIR_EXPANDED/deepclaude-proxy.err</string>|" \
     "$PLIST_SRC" > "$PLIST_DEST"
 
+# ── Install the remap guard ────────────────────────────────────────────
+# check-remap.sh warns when the cloned proxy's MODEL_REMAP table has no entry
+# for the Claude model ids in use (which would silently mis-route to the
+# backend's default model). The /deepseek and /openrouter slash commands call
+# it from this stable location after switching.
+GUARD_DEST="$HOME/.config/deepclaude/check-remap.sh"
+if [ -f "$PWD/check-remap.sh" ]; then
+  cp -f "$PWD/check-remap.sh" "$GUARD_DEST"
+  chmod +x "$GUARD_DEST"
+fi
+
 # ── Install Claude Code slash commands ─────────────────────────────────
 # Copy /deepseek, /openrouter, /anthropic into the user's global commands dir
 # so they're available in every project. Skipped if the source dir is absent.

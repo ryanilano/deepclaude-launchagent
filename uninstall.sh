@@ -57,6 +57,7 @@ rm -f "$PLIST_DEST"           && echo "Removed $PLIST_DEST"
 rm -f "$WRAPPER_DEST_EXPANDED" && echo "Removed $WRAPPER_DEST_EXPANDED"
 rm -f "$RESOLVER_DEST"        && echo "Removed $RESOLVER_DEST"
 rm -f "$RESOLVED_ENV"         && echo "Removed $RESOLVED_ENV"
+rm -f "$CONFIG_DIR/check-remap.sh" && echo "Removed $CONFIG_DIR/check-remap.sh"
 
 # ── Remove slash commands ───────────────────────────────────────────────
 # Only remove the commands this repo installs — derived from commands/*.md
